@@ -1,103 +1,282 @@
 import { useMemo, useState } from 'react'
+
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+
 import { ArrowRight, BusFront, CalendarDays, Check, Clock3, Info, MapPin, Search, ShieldCheck, Star, Ticket, TicketCheck, Users, Wallet, UserRound, Download } from 'lucide-react'
+
 import { useAppData } from '../../services/useAppData'
+
 import { formatDate, formatLkr } from '../../services/formatters'
-import { searchScheduledTrips } from '../../services/routeService'
+
+import { searchScheduledTrips, resolveBookingStops, matchRouteStops } from '../../services/routeService'
+
 import { suggestNearbyStops } from '../../services/placeCatalogue'
+
 import MapPicker from '../../components/MapPicker'
 
+
+
 const today = () => new Date().toISOString().slice(0, 10)
+
 const bookedSeats = (data, tripId) => data.bookings.filter(booking => booking.tripId === tripId && booking.status !== 'Cancelled').reduce((sum, booking) => sum + Number(booking.seats || 0), 0)
+
 const tripInfo = (data, trip) => ({ route: trip?.serviceType === 'STAFF' ? data.staffRoutes.find(item => item.routeId === trip?.routeId) : data.routes.find(item => item.id === trip?.routeId), vehicle: data.vehicles.find(item => item.id === trip?.vehicleId), driver: data.drivers.find(item => item.id === trip?.driverId) })
+
+// Stop selection travels in the URL so search, details and booking stay consistent.
+const stopQuery = (boardStop, alightStop) => new URLSearchParams({
+  boardingStopId: String(boardStop.stopId),
+  destinationStopId: String(alightStop.stopId),
+}).toString()
+
+const bookingJourney = (booking, route, trip) => {
+  const stops = route?.stops || []
+  const board = stops.find(stop => String(stop.stopId || stop.id || `${route.routeId || route.id}-STOP-${stop.stopOrder}`) === String(booking.boardingStopId))
+  const alight = stops.find(stop => String(stop.stopId || stop.id || `${route.routeId || route.id}-STOP-${stop.stopOrder}`) === String(booking.destinationStopId))
+  return {
+    from: booking.boardingStopName || board?.name || route?.origin || 'Unknown boarding stop',
+    to: booking.destinationStopName || alight?.name || route?.destination || 'Unknown destination',
+    departure: booking.boardingTime || board?.scheduledTime || trip?.departure || 'Time unavailable',
+    arrival: booking.destinationTime || alight?.scheduledTime || trip?.arrival || 'Time unavailable',
+  }
+}
+
 const Status = ({ children }) => <span className={`portal-status ${String(children).toLowerCase().replace(/[^a-z]+/g,'-')}`}>{children}</span>
 
+
+
 function Heading({ kicker='YOUR SMARTMOVE', title, text, action }) { return <div className="portal-page-heading"><div><span>{kicker}</span><h1>{title}</h1>{text&&<p>{text}</p>}</div>{action}</div> }
+
 function Panel({title,subtitle,action,children,className=''}) { return <section className={`portal-panel ${className}`}><div className="portal-panel-head"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>{children}</section> }
+
 function Empty({title,text,action}) { return <div className="portal-empty"><span><BusFront size={22}/></span><strong>{title}</strong><p>{text}</p>{action}</div> }
+
 function TripCard({trip,data,actionLabel='View trip',onBook=false}) { const {route,vehicle}=tripInfo(data,trip);const remaining=Math.max(0,(trip.seats||0)-bookedSeats(data,trip.id));return <article className="pass-trip-card"><div className="pass-trip-top"><span className="pass-trip-date"><CalendarDays size={14}/>{formatDate(trip.date)}</span><Status>{trip.status}</Status></div><div className="pass-trip-route"><div><strong>{trip.departure}</strong><small>{route?.origin}</small></div><span className="route-track"><i/><b/ ><i/></span><div><strong>{trip.arrival}</strong><small>{route?.destination}</small></div></div><div className="pass-trip-bottom"><span><BusFront size={14}/>{vehicle?.name} · {vehicle?.plate}</span><span>{remaining} seats</span></div><div className="pass-trip-action"><strong>{formatLkr(route?.fare)} <small>/ seat</small></strong>{onBook?<Link to={`/passenger/book/${trip.id}`} className="button button-primary">Book now <ArrowRight size={15}/></Link>:<Link to={`/passenger/trip/${trip.id}`} className="button button-outline">{actionLabel} <ArrowRight size={15}/></Link>}</div></article> }
 
+
+
 export function PassengerDashboard() {
+
   const {data,session}=useAppData();const passenger=data.passengers.find(person=>person.id===session?.userId)||data.passengers[0];const bookings=data.bookings.filter(booking=>booking.passengerId===passenger?.id);const upcoming=bookings.filter(booking=>{const trip=data.trips.find(item=>item.id===booking.tripId);return booking.status==='Confirmed'&&trip?.date>=today()}).slice(0,2);const nextTrip=data.trips.filter(trip=>trip.status==='Scheduled'&&trip.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];const journeys=passenger?.trips||bookings.filter(b=>b.status==='Confirmed').length
+
   return <><Heading kicker="PASSENGER SPACE" title={`Welcome back, ${passenger?.name?.split(' ')[0]||'traveller'}.`} text="A little island adventure might be closer than you think." action={<Link to="/passenger/search" className="button button-primary"><Search size={16}/> Find a trip</Link>}/><div className="passenger-hero-card"><div><span>YOUR NEXT CHAPTER</span><h2>Go somewhere<br/><em>good for the soul.</em></h2><p>Explore local routes, find a comfortable ride and save your seat in a few simple steps.</p><Link className="pass-hero-link" to="/passenger/search">Find your next journey <ArrowRight size={16}/></Link></div><div className="passenger-hero-art"><span className="sun-disc"/><div className="hill hill-back"/><div className="hill hill-front"/><BusFront size={72}/><span className="hero-art-tag">SRI LANKA, OUTSIDE YOUR WINDOW</span></div></div><div className="portal-kpi-grid"><article><span className="pass-kpi-icon sage"><TicketCheck size={18}/></span><span>My bookings</span><strong>{bookings.length}</strong><small>All-time demo reservations</small></article><article><span className="pass-kpi-icon blue"><BusFront size={18}/></span><span>Journeys taken</span><strong>{journeys}</strong><small>Profile trip count</small></article><article><span className="pass-kpi-icon gold"><Star size={18}/></span><span>Reviews shared</span><strong>{data.reviews.filter(review=>review.passengerId===passenger?.id).length}</strong><small>Your travel feedback</small></article></div><div className="passenger-dashboard-grid"><Panel title="Your upcoming journeys" subtitle="Your confirmed seats, all in one place." action={<Link to="/passenger/bookings">All bookings <ArrowRight size={14}/></Link>}>{upcoming.length?<div className="pass-trip-list">{upcoming.map(booking=>{const trip=data.trips.find(t=>t.id===booking.tripId);return trip&&<TripCard key={booking.id} trip={trip} data={data} actionLabel="Ticket"/>})}</div>:<Empty title="Nothing booked just yet" text="There are lovely places waiting. Find a route and reserve a seat." action={<Link to="/passenger/search" className="button button-primary">Search journeys <ArrowRight size={14}/></Link>}/>}</Panel><Panel title="A good place to start" subtitle="A route picked from our live demo schedule."><div className="recommended-card">{nextTrip? <><span className="recommended-label"><Sparkle/> RECOMMENDED ROUTE</span><h3>{tripInfo(data,nextTrip).route?.origin}<br/><i>to</i> {tripInfo(data,nextTrip).route?.destination}</h3><span className="recommended-date"><CalendarDays size={14}/>{formatDate(nextTrip.date)} · {nextTrip.departure}</span><span className="recommended-fare">from <b>{formatLkr(tripInfo(data,nextTrip).route?.fare)}</b></span><Link to={`/passenger/trip/${nextTrip.id}`}>See this journey <ArrowRight size={14}/></Link></>:<p>Search for a journey to see recommendations.</p>}</div></Panel></div><Panel title="A small reminder" className="reminder-panel"><div className="reminder-message"><span><Info size={18}/></span><div><strong>Keep your journey details close</strong><p>Your tickets and booking references live in My Tickets. This experience uses demo data only; no operator confirmation is sent.</p></div><Link to="/passenger/tickets">View tickets <ArrowRight size={14}/></Link></div></Panel></>
+
 }
+
 function Sparkle(){return <span className="sparkle-small">✦</span>}
 
+
+
 export function SearchTrips() {
+
   const {data,session,currentUser,addRecord}=useAppData()
+
   const [params,setParams]=useSearchParams()
+
   const [serviceType,setServiceType]=useState(params.get('serviceType')==='STAFF'?'STAFF':'COMMUTER')
+
   const [from,setFrom]=useState(params.get('from')||'')
+
   const [to,setTo]=useState(params.get('to')||'')
+
   const [date,setDate]=useState(params.get('date')||'')
+
   const [count,setCount]=useState(params.get('passengers')||'1')
+
   const [searched,setSearched]=useState(Boolean(params.get('to')))
+
   const [showMap,setShowMap]=useState(false)
+
   const [pickTarget,setPickTarget]=useState('pickup')
+
   const [pickup,setPickup]=useState(null)
+
   const [destination,setDestination]=useState(null)
+
   const [staffSeats,setStaffSeats]=useState(1)
+
   const passengerId=currentUser?.linkedProfileId
+
   const employee=data.employees.find(employee=>employee.passengerId===passengerId&&employee.eligible)
+
   const employeeCompany=data.companies.find(company=>company.id===employee?.companyId)
+
   const availableRoutes=useMemo(()=>serviceType==='STAFF'?data.staffRoutes.filter(route=>route.companyId===employeeCompany?.id):data.routes.filter(route=>route.serviceType!=='STAFF'),[serviceType,data.staffRoutes,data.routes,employeeCompany?.id])
+
   const availablePlaces=[...new Set(availableRoutes.flatMap(route=>(route.stops||[]).map(stop=>stop.name)))].sort()
+
   const results=useMemo(()=>searchScheduledTrips(data,{from,to,date,serviceType,passengers:count}).filter(result=>serviceType!=='STAFF'||result.route.companyId===employeeCompany?.id),[data,from,to,date,serviceType,count,employeeCompany?.id])
+
   const submit=event=>{event.preventDefault();setSearched(true);setParams({from,to,date,passengers:count,serviceType})}
+
   const nearby=useMemo(()=>pickup?suggestNearbyStops(pickup,availableRoutes):[],[pickup,availableRoutes])
-  const reserveStaff=(trip,route)=>{
+
+  const reserveStaff=(trip,route,boardStop,alightStop)=>{
+
     if(!employee)return
+
     const already=(data.staffBookings||[]).some(booking=>booking.tripId===trip.id&&booking.employeeId===employee.id&&booking.status!=='Cancelled')
+
     if(already)return
+
     const seatsUsed=(data.staffBookings||[]).filter(booking=>booking.tripId===trip.id&&booking.status!=='Cancelled').reduce((sum,booking)=>sum+Number(booking.seats||0),0)
-    if(seatsUsed+staffSeats>Number(trip.seats||0))return
-    addRecord('staffBookings',{tripId:trip.id,passengerId:passengerId,employeeId:employee.id,companyId:employee.companyId,seats:staffSeats,status:'Requested',requestedAt:today(),routeName:route.name})
+
+    if(seatsUsed+bookedSeats(data,trip.id)+staffSeats>Number(trip.seats||0))return
+
+    addRecord('staffBookings',{tripId:trip.id,passengerId:passengerId,employeeId:employee.id,companyId:employee.companyId,seats:staffSeats,status:'Requested',requestedAt:today(),routeName:route.name,boardingStopId:boardStop.stopId,destinationStopId:alightStop.stopId,boardingStopName:boardStop.name,destinationStopName:alightStop.name,boardingTime:boardStop.scheduledTime||trip.departure,destinationTime:alightStop.scheduledTime||trip.arrival})
+
   }
+
   return <><Heading kicker="ONE ACCOUNT · THREE WAYS TO GO" title="Find your journey." text="Search everyday routes, eligible workplace shuttles, or plan a custom trip request."/>
+
     <div className="service-type-tabs" role="tablist" aria-label="Transport service type">{[{id:'COMMUTER',title:'Daily commuter',text:'Scheduled routes',icon:'↗'},{id:'STAFF',title:'Staff transportation',text:'Company routes',icon:'▦'}].map(item=><button key={item.id} type="button" role="tab" aria-selected={serviceType===item.id} className={serviceType===item.id?'active':''} onClick={()=>{setServiceType(item.id);setFrom('');setTo('');setSearched(false);setParams({serviceType:item.id})}}><span className="service-type-icon">{item.icon}</span><span><strong>{item.title}</strong><small>{item.text}</small></span></button>)}<Link to="/passenger/custom-trips" className="custom-service-tab"><span className="service-type-icon">＋</span><span><strong>Custom trip</strong><small>Request a vehicle</small></span><ArrowRight size={15}/></Link></div>
+
     {serviceType==='STAFF'&&!employee&&<div className="eligibility-notice"><ShieldCheck size={17}/><span><strong>{session?'Company eligibility required.':'Sign in to check staff eligibility.'}</strong> Staff routes are restricted to the linked demo employee roster. {session?'This account is not linked to an eligible employee profile.':'Search commuter services without an account, or sign in to check an employee profile.'} <Link to="/login?next=%2Fpassenger%2Fsearch%3FserviceType%3DSTAFF">{session?'Learn about eligibility':'Sign in'}</Link></span></div>}
+
     {serviceType==='STAFF'&&employee&&<div className="eligibility-notice eligible"><Check size={17}/><span><strong>{employeeCompany?.name}</strong> · Demo employee {employee.employeeCode}. Only routes for this company are shown. In production, eligibility is verified by the backend.</span></div>}
+
     <form className="pass-search-form" onSubmit={submit}><label>Boarding place<input list="smartmove-places" value={from} onChange={event=>setFrom(event.target.value)} placeholder="Type a town or stop" aria-label="Boarding location"/></label><datalist id="smartmove-places">{availablePlaces.map(place=><option key={place} value={place}/>)}</datalist><label>Destination<input list="smartmove-places" value={to} onChange={event=>setTo(event.target.value)} placeholder="Type destination" aria-label="Destination"/></label><label>Travel date<input type="date" min={today()} value={date} onChange={event=>setDate(event.target.value)}/></label><label>Passengers<select value={count} onChange={event=>setCount(event.target.value)}>{[1,2,3,4,5,6].map(number=><option key={number} value={number}>{number} {number===1?'passenger':'passengers'}</option>)}</select></label><button className="button button-primary"><Search size={16}/> Search {serviceType==='STAFF'?'staff routes':'trips'}</button></form>
+
     <div className="route-search-tools"><button type="button" className="button button-outline" onClick={()=>setShowMap(!showMap)}><MapPin size={14}/>{showMap?'Hide map':'Choose on map'}</button>{from&&to&&<button type="button" className="button button-quiet" onClick={()=>{setFrom(to);setTo(from)}}>Swap places</button>}<span>Search route origins, destinations and intermediate stops.</span></div>
+
     {showMap&&<div className="route-map-search"><MapPicker pickup={pickup} destination={destination} onPickupChange={point=>{setPickup(point);setFrom(point.label)}} onDestinationChange={point=>{setDestination(point);setTo(point.label)}} pickTarget={pickTarget} onTargetChange={setPickTarget}/>{nearby.length>0&&<div className="nearby-stop-suggestions"><strong>Nearby supported boarding stops</strong>{nearby.slice(0,4).map(item=><button type="button" key={`${item.routeId}-${item.stop.stopOrder}`} onClick={()=>setFrom(item.stop.name)}>{item.stop.name}<small>{(item.distance/1000).toFixed(1)} km · {item.routeName}</small></button>)}</div>}</div>}
+
     <div className="search-results-heading"><div><span>{searched?'MATCHING DEPARTURES':'UPCOMING DEPARTURES'}</span><h2>{results.length} {results.length===1?'journey':'journeys'} {to?<>serving {to}</>:'to explore'}</h2></div></div>
-    {results.length?<div className="search-results-grid">{results.map(({trip,route,boardStop,alightStop,servedStops,availableSeats})=>serviceType==='STAFF'?<article className="pass-trip-card service-result-card" key={trip.id}><div className="pass-trip-top"><span className="pass-trip-date"><CalendarDays size={14}/>{formatDate(trip.date)}</span><Status>{trip.status}</Status></div><span className="staff-route-tag">STAFF · {route.companyName}</span><h3>{boardStop.name} <i>→</i> {alightStop.name}</h3><p className="route-stops-summary">Stops: {servedStops.map(stop=>stop.name).join(' · ')}</p><div className="pass-trip-bottom"><span><BusFront size={14}/>{data.vehicles.find(item=>item.id===trip.vehicleId)?.plate||'Vehicle pending'}</span><span>{availableSeats} seats</span></div><div className="pass-trip-bottom"><span><Clock3 size={14}/>{boardStop.scheduledTime||trip.departure} pickup · {alightStop.scheduledTime||trip.arrival} destination</span><span>{route.operatingDays?.join(' ')}</span></div><div className="staff-reserve-row"><label>Seats<select value={staffSeats} onChange={event=>setStaffSeats(Number(event.target.value))}>{Array.from({length:Math.min(6,availableSeats)},(_,index)=><option key={index+1}>{index+1}</option>)}</select></label><button type="button" className="button button-primary" disabled={!employee||(data.staffBookings||[]).some(booking=>booking.tripId===trip.id&&booking.employeeId===employee.id&&booking.status!=='Cancelled')} onClick={()=>reserveStaff(trip,route)}>{(data.staffBookings||[]).some(booking=>booking.tripId===trip.id&&booking.employeeId===employee?.id&&booking.status!=='Cancelled')?'Requested':'Request staff seats'}</button></div></article>:<article className="pass-trip-card service-result-card" key={trip.id}><div className="pass-trip-top"><span className="pass-trip-date"><CalendarDays size={14}/>{formatDate(trip.date)}</span><Status>{trip.status}</Status></div><span className="commuter-route-tag">DAILY COMMUTER</span><div className="pass-trip-route"><div><strong>{boardStop.scheduledTime||trip.departure}</strong><small>{boardStop.name}</small></div><span className="route-track"><i/><b/><i/></span><div><strong>{alightStop.scheduledTime||trip.arrival}</strong><small>{alightStop.name}</small></div></div><p className="route-stops-summary">Stops served: {servedStops.map(stop=>stop.name).join(' · ')}</p><div className="pass-trip-bottom"><span><BusFront size={14}/>{data.vehicles.find(item=>item.id===trip.vehicleId)?.name} · {data.vehicles.find(item=>item.id===trip.vehicleId)?.plate}</span><span>{availableSeats} seats</span></div><div className="pass-trip-action"><strong>{formatLkr(route.fare)} <small>/ seat</small></strong><Link to={`/passenger/trip/${trip.id}`} className="button button-outline">Trip details <ArrowRight size={14}/></Link></div></article>)}</div>:<Empty title={searched?'No matching departures':'No upcoming trips available'} text={serviceType==='STAFF'&&!employee?'Staff services are restricted to their listed company employees. Your account is not currently eligible.':searched?'Try a place name served by another route or check that boarding occurs before destination.':'Enter any area name; route origins, destinations and intermediate stops are searched.'} action={<button className="button button-outline" onClick={()=>{setFrom('');setTo('');setDate('');setCount('1');setSearched(false);setParams({serviceType})}}>Clear filters</button>}/>}
+
+    {results.length?<div className="search-results-grid">{results.map(({trip,route,boardStop,alightStop,servedStops,availableSeats})=>serviceType==='STAFF'?<article className="pass-trip-card service-result-card" key={trip.id}><div className="pass-trip-top"><span className="pass-trip-date"><CalendarDays size={14}/>{formatDate(trip.date)}</span><Status>{trip.status}</Status></div><span className="staff-route-tag">STAFF · {route.companyName}</span><h3>{boardStop.name} <i>→</i> {alightStop.name}</h3><p className="route-stops-summary">Stops: {servedStops.map(stop=>stop.name).join(' · ')}</p><div className="pass-trip-bottom"><span><BusFront size={14}/>{data.vehicles.find(item=>item.id===trip.vehicleId)?.plate||'Vehicle pending'}</span><span>{availableSeats} seats</span></div><div className="pass-trip-bottom"><span><Clock3 size={14}/>{boardStop.scheduledTime||trip.departure} pickup · {alightStop.scheduledTime||trip.arrival} destination</span><span>{route.operatingDays?.join(' ')}</span></div><div className="staff-reserve-row"><label>Seats<select value={Math.min(staffSeats, Math.max(1,availableSeats))} onChange={event=>setStaffSeats(Number(event.target.value))}>{Array.from({length:Math.min(6,availableSeats)},(_,index)=><option key={index+1}>{index+1}</option>)}</select></label><button type="button" className="button button-primary" disabled={!employee||(data.staffBookings||[]).some(booking=>booking.tripId===trip.id&&booking.employeeId===employee.id&&booking.status!=='Cancelled')} onClick={()=>reserveStaff(trip,route,boardStop,alightStop)}>{(data.staffBookings||[]).some(booking=>booking.tripId===trip.id&&booking.employeeId===employee?.id&&booking.status!=='Cancelled')?'Requested':'Request staff seats'}</button></div></article>:<article className="pass-trip-card service-result-card" key={trip.id}><div className="pass-trip-top"><span className="pass-trip-date"><CalendarDays size={14}/>{formatDate(trip.date)}</span><Status>{trip.status}</Status></div><span className="commuter-route-tag">DAILY COMMUTER</span><div className="pass-trip-route"><div><strong>{boardStop.scheduledTime||trip.departure}</strong><small>{boardStop.name}</small></div><span className="route-track"><i/><b/><i/></span><div><strong>{alightStop.scheduledTime||trip.arrival}</strong><small>{alightStop.name}</small></div></div><p className="route-stops-summary">Stops served: {servedStops.map(stop=>stop.name).join(' · ')}</p><div className="pass-trip-bottom"><span><BusFront size={14}/>{data.vehicles.find(item=>item.id===trip.vehicleId)?.name} · {data.vehicles.find(item=>item.id===trip.vehicleId)?.plate}</span><span>{availableSeats} seats</span></div><div className="pass-trip-action"><strong>{formatLkr(route.fare)} <small>/ seat</small></strong><Link to={`/passenger/trip/${trip.id}?${stopQuery(boardStop, alightStop)}`} className="button button-outline">Trip details <ArrowRight size={14}/></Link></div></article>)}</div>:<Empty title={searched?'No matching departures':'No upcoming trips available'} text={serviceType==='STAFF'&&!employee?'Staff services are restricted to their listed company employees. Your account is not currently eligible.':searched?'Try a place name served by another route or check that boarding occurs before destination.':'Enter any area name; route origins, destinations and intermediate stops are searched.'} action={<button className="button button-outline" onClick={()=>{setFrom('');setTo('');setDate('');setCount('1');setSearched(false);setParams({serviceType})}}>Clear filters</button>}/>}
+
     {serviceType==='STAFF'&&<Panel title="My staff reservations" subtitle="Company-only shuttle requests associated with your employee profile.">{employee?(data.staffBookings||[]).filter(booking=>booking.employeeId===employee.id).length?<div className="booking-record-list">{data.staffBookings.filter(booking=>booking.employeeId===employee.id).map(booking=><article className="booking-record" key={booking.id}><div className="booking-record-icon"><BusFront size={18}/></div><div className="booking-record-main"><span className="booking-reference">{booking.companyId} <Status>{booking.status}</Status></span><strong>{booking.routeName}</strong><span>{booking.seats} seat(s) · {formatDate(booking.requestedAt)}</span></div></article>)}</div>:<Empty title="No staff reservations yet" text="Request seats on one of your eligible company routes above."/>:<Empty title="No employee roster linked" text="Ask your administrator to provision a staff transport profile."/>}</Panel>}
+
     <p className="portal-demo-caption">Route availability and staff eligibility are demo data. Backend must enforce route stop order, seat concurrency, company eligibility and assignment permissions.</p>
+
+  </>
+
+}
+
+
+
+export function PassengerTripDetails() {
+  const { tripId } = useParams()
+  const [params] = useSearchParams()
+  const { data } = useAppData()
+  const trip = data.trips.find(item => item.id === tripId)
+  if (!trip) return <Empty title="Journey not found" text="This trip may have been removed from the demo schedule." action={<Link className="button button-primary" to="/passenger/search">Browse trips</Link>}/>
+
+  const { route, vehicle, driver } = tripInfo(data, trip)
+  const requested = params.has('boardingStopId') || params.has('destinationStopId')
+  const selection = requested
+    ? resolveBookingStops(route, { boardingStopId: params.get('boardingStopId'), destinationStopId: params.get('destinationStopId') })
+    : matchRouteStops(route)
+  if (!selection) return <Empty title="Invalid stop selection" text="The chosen boarding and destination stops are not valid for this route. Please search again." action={<Link className="button button-primary" to="/passenger/search">Search journeys</Link>}/>
+
+  const { boardStop, alightStop, servedStops } = selection
+  const remaining = Math.max(0, Number(trip.seats || 0) - bookedSeats(data, trip.id) - (data.staffBookings || []).filter(b => b.tripId === trip.id && b.status !== 'Cancelled').reduce((sum,b) => sum + Number(b.seats || 0), 0))
+  const bookingUrl = `/passenger/book/${trip.id}?${stopQuery(boardStop, alightStop)}`
+  return <>
+    <Link className="portal-back-link" to="/passenger/search"><ArrowLeftIcon/> Back to search</Link>
+    <div className="trip-detail-hero"><span>YOUR JOURNEY, AT A GLANCE</span><h1>{boardStop.name}<i>to</i>{alightStop.name}</h1><p>Scheduled service · {servedStops.map(stop => stop.name).join(' → ')}</p></div>
+    <div className="trip-detail-grid"><div>
+      <Panel title="Your timetable" subtitle="Your selected boarding and destination stops"><div className="detail-timeline"><div><span className="timeline-dot start"/><small>BOARD AT</small><strong>{boardStop.name}</strong><p>{formatDate(trip.date)} · {boardStop.scheduledTime || trip.departure}</p></div><i/><div><span className="timeline-dot end"/><small>GET OFF AT</small><strong>{alightStop.name}</strong><p>{formatDate(trip.date)} · {alightStop.scheduledTime || trip.arrival}</p></div></div>
+      <div className="trip-detail-facts"><div><BusFront size={17}/><span><small>YOUR BUS</small><strong>{vehicle?.name}</strong><em>{vehicle?.plate} · {vehicle?.type}</em></span></div><div><UserRound size={17}/><span><small>YOUR DRIVER</small><strong>{driver?.name}</strong><em>Assigned driver</em></span></div><div><Users size={17}/><span><small>SEATS AVAILABLE</small><strong>{remaining} seats</strong><em>Capacity {trip.seats} passengers</em></span></div></div></Panel>
+      <Panel title="A more comfortable ride" subtitle="Included in this scheduled service"><div className="amenities"><span><Check size={15}/> Reserved seating</span><span><Check size={15}/> Professional driver</span><span><Check size={15}/> Luggage space</span><span><Check size={15}/> Clear timetable</span></div></Panel>
+    </div><aside className="trip-fare-card"><span>DEMO FULL-ROUTE FARE</span><strong>{formatLkr(route?.fare)}</strong><small>per passenger · segment pricing not available</small><hr/><div><span>Boarding</span><b>{boardStop.name}</b></div><div><span>Destination</span><b>{alightStop.name}</b></div><div><span>Seats remaining</span><b>{remaining}</b></div><Link className="button button-primary" to={bookingUrl}>Choose seats <ArrowRight size={16}/></Link><p><ShieldCheck size={14}/> No payment is collected in this demo.</p></aside></div>
   </>
 }
 
-export function PassengerTripDetails() {
-  const {tripId}=useParams();const {data}=useAppData();const trip=data.trips.find(item=>item.id===tripId);if(!trip)return <Empty title="Journey not found" text="This trip may have been removed from the demo schedule." action={<Link className="button button-primary" to="/passenger/search">Browse trips</Link>}/>;const {route,vehicle,driver}=tripInfo(data,trip);const remaining=Math.max(0,(trip.seats||0)-bookedSeats(data,trip.id));return <><Link className="portal-back-link" to="/passenger/search"><ArrowLeftIcon/> Back to search</Link><div className="trip-detail-hero"><span>YOUR JOURNEY, AT A GLANCE</span><h1>{route?.origin}<i>to</i>{route?.destination}</h1><p>{route?.distance} km through Sri Lanka · approx. {route?.duration}</p></div><div className="trip-detail-grid"><div><Panel title="Your timetable" subtitle="Departure and arrival schedule"><div className="detail-timeline"><div><span className="timeline-dot start"/><small>DEPARTS FROM</small><strong>{route?.origin}</strong><p>{formatDate(trip.date)} · {trip.departure}</p></div><i/><div><span className="timeline-dot end"/><small>ARRIVES AT</small><strong>{route?.destination}</strong><p>{formatDate(trip.date)} · {trip.arrival}</p></div></div><div className="trip-detail-facts"><div><BusFront size={17}/><span><small>YOUR BUS</small><strong>{vehicle?.name}</strong><em>{vehicle?.plate} · {vehicle?.type}</em></span></div><div><UserRound size={17}/><span><small>YOUR DRIVER</small><strong>{driver?.name}</strong><em>Professional driver · {driver?.experience} years experience</em></span></div><div><Users size={17}/><span><small>SEATS AVAILABLE</small><strong>{remaining} seats</strong><em>Capacity {trip.seats} passengers</em></span></div></div></Panel><Panel title="A more comfortable ride" subtitle="Included in this scheduled service"><div className="amenities"><span><Check size={15}/> Reserved seating</span><span><Check size={15}/> Professional driver</span><span><Check size={15}/> Luggage space</span><span><Check size={15}/> Clear timetable</span></div></Panel></div><aside className="trip-fare-card"><span>YOUR FARE</span><strong>{formatLkr(route?.fare)}</strong><small>per passenger · demo fare</small><hr/><div><span>Journey</span><b>{route?.distance} km</b></div><div><span>Estimated time</span><b>{route?.duration}</b></div><div><span>Seats remaining</span><b>{remaining}</b></div><Link className="button button-primary" to={`/passenger/book/${trip.id}`}>Choose seats <ArrowRight size={16}/></Link><p><ShieldCheck size={14}/> No payment is collected in this demo.</p></aside></div></>
-}
-function ArrowLeftIcon(){return <span>←</span>}
+function ArrowLeftIcon() { return <span>←</span> }
 
 export function BookTicket() {
-  const {tripId}=useParams();const {data,session,addRecord,updateRecord}=useAppData();const trip=data.trips.find(item=>item.id===tripId);const passenger=data.passengers.find(item=>item.id===session?.userId);const [seats,setSeats]=useState(1);const [name,setName]=useState(passenger?.name||'');const [phone,setPhone]=useState(passenger?.phone||'');const [error,setError]=useState('');const [confirmed,setConfirmed]=useState('');if(!trip)return <Empty title="Trip not available" text="Choose a scheduled trip to book." action={<Link to="/passenger/search" className="button button-primary">Search trips</Link>}/>;const {route,vehicle}=tripInfo(data,trip);const remaining=Math.max(0,(trip.seats||0)-bookedSeats(data,trip.id));const total=(route?.fare||0)*seats
-  const submit=event=>{event.preventDefault();setError('');if(!name.trim()||!phone.trim())return setError('Passenger name and phone are required.');if(seats<1||seats>6)return setError('Choose between 1 and 6 seats.');if(seats>remaining)return setError(`Only ${remaining} seats remain for this departure.`);if(trip.status!=='Scheduled'||trip.date<today())return setError('This departure is no longer available.');const bookingId=`BK-${crypto.randomUUID().slice(0,8).toUpperCase()}`;addRecord('bookings',{id:bookingId,tripId:trip.id,passengerId:passenger?.id,bookedAt:today(),seats,amount:total,status:'Confirmed',contactName:name.trim(),contactPhone:phone.trim()});addRecord('payments',{id:`PY-${crypto.randomUUID().slice(0,8).toUpperCase()}`,bookingId,date:today(),amount:total,method:'Demo record',reference:`DEMO-${bookingId}`,status:'Pending'});if(passenger)updateRecord('passengers',passenger.id,{trips:Number(passenger.trips||0)+1});setConfirmed(bookingId)}
-  if(confirmed)return <div className="booking-confirmation"><span className="confirmation-check"><Check size={28}/></span><span className="section-kicker">SEAT RESERVED IN DEMO MODE</span><h1>You’re on your way.</h1><p>Your demo booking reference is <strong>{confirmed}</strong>. No payment has been taken and no operator has been notified.</p><div className="confirmation-summary"><span>{route?.origin} → {route?.destination}</span><span>{formatDate(trip.date)} · {trip.departure}</span><span>{seats} seat{seats>1?'s':''} · {formatLkr(total)}</span></div><div><Link className="button button-primary" to="/passenger/tickets">See your ticket <ArrowRight size={15}/></Link><Link className="button button-outline" to="/passenger">Back to dashboard</Link></div></div>
-  return <><Link className="portal-back-link" to={`/passenger/trip/${trip.id}`}><ArrowLeftIcon/> Journey details</Link><Heading kicker="RESERVE YOUR SEAT" title="One more step." text="Confirm your traveller details. No payment information is requested."/><div className="booking-layout"><form className="booking-form portal-panel" onSubmit={submit}><h2>Passenger details</h2><p>Who will be travelling on this booking?</p><label>Full name<input value={name} onChange={e=>setName(e.target.value)} required autoComplete="name"/></label><label>Contact phone<input value={phone} onChange={e=>setPhone(e.target.value)} required autoComplete="tel"/></label><label>Number of seats<select value={seats} onChange={e=>setSeats(Number(e.target.value))}>{Array.from({length:Math.min(6,remaining)},(_,index)=><option key={index+1} value={index+1}>{index+1} {index===0?'seat':'seats'}</option>)}</select></label>{error&&<p className="auth-error" role="alert">{error}</p>}<div className="booking-notice"><Info size={16}/>Demo reservation only. No real payment is processed.</div><button className="button button-primary booking-submit" disabled={remaining<1}>Confirm demo booking <ArrowRight size={16}/></button></form><aside className="booking-summary portal-panel"><span>YOUR JOURNEY</span><h2>{route?.origin} <i>to</i> {route?.destination}</h2><div className="summary-detail"><CalendarDays size={15}/>{formatDate(trip.date)} · {trip.departure} – {trip.arrival}</div><div className="summary-detail"><BusFront size={15}/>{vehicle?.name} · {vehicle?.plate}</div><hr/><div className="summary-price"><span>{formatLkr(route?.fare)} × {seats} seat{seats>1?'s':''}</span><strong>{formatLkr(total)}</strong></div><small>Final amount shown as a demo fare. Payments are not processed.</small></aside></div></>
+  const { tripId } = useParams()
+  const [params] = useSearchParams()
+  const { data, session, addRecord } = useAppData()
+  const trip = data.trips.find(item => item.id === tripId)
+  const passenger = data.passengers.find(item => item.id === session?.userId)
+  const [seats, setSeats] = useState(1)
+  const [name, setName] = useState(passenger?.name || '')
+  const [phone, setPhone] = useState(passenger?.phone || '')
+  const [error, setError] = useState('')
+  const [confirmed, setConfirmed] = useState('')
+
+  if (!trip) return <Empty title="Trip not available" text="Choose a scheduled trip to book." action={<Link to="/passenger/search" className="button button-primary">Search trips</Link>}/>
+  const { route, vehicle } = tripInfo(data, trip)
+  const requested = params.has('boardingStopId') || params.has('destinationStopId')
+  const selection = requested
+    ? resolveBookingStops(route, { boardingStopId: params.get('boardingStopId'), destinationStopId: params.get('destinationStopId') })
+    : matchRouteStops(route)
+  if (!selection) return <Empty title="Invalid stop selection" text="Please choose a valid boarding and destination stop from route search." action={<Link className="button button-primary" to="/passenger/search">Search trips</Link>}/>
+  const { boardStop, alightStop } = selection
+  const remaining = Math.max(0, Number(trip.seats || 0) - bookedSeats(data, trip.id) - (data.staffBookings || []).filter(b => b.tripId === trip.id && b.status !== 'Cancelled').reduce((sum,b) => sum + Number(b.seats || 0), 0))
+  const fare = Number(route?.fare || 0)
+  const total = fare * seats
+  const detailUrl = `/passenger/trip/${trip.id}?${stopQuery(boardStop, alightStop)}`
+  const submit = event => {
+    event.preventDefault()
+    setError('')
+    if (!passenger) return setError('Sign in as a passenger before booking.')
+    if (!name.trim() || !phone.trim()) return setError('Passenger name and phone are required.')
+    if (!Number.isInteger(seats) || seats < 1 || seats > 6) return setError('Choose between 1 and 6 seats.')
+    if (seats > remaining) return setError(`Only ${remaining} seats remain for this departure.`)
+    if (trip.status !== 'Scheduled' || trip.date < today()) return setError('This departure is no longer available.')
+    if (trip.serviceType === 'STAFF' || trip.serviceType === 'CUSTOM') return setError('Use the appropriate service reservation flow.')
+    const bookingId = `BK-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+    addRecord('bookings', {
+      id: bookingId, tripId: trip.id, passengerId: passenger.id,
+      bookedAt: today(), seats, amount: total, status: 'Confirmed',
+      contactName: name.trim(), contactPhone: phone.trim(),
+      boardingStopId: boardStop.stopId, destinationStopId: alightStop.stopId,
+      boardingStopName: boardStop.name, destinationStopName: alightStop.name,
+      boardingTime: boardStop.scheduledTime || trip.departure,
+      destinationTime: alightStop.scheduledTime || trip.arrival,
+      fareType: 'FULL_ROUTE_DEMO', farePerSeat: fare,
+    })
+    addRecord('payments', { id: `PY-${crypto.randomUUID().slice(0, 8).toUpperCase()}`, bookingId, date: today(), amount: total, method: 'Demo record', reference: `DEMO-${bookingId}`, status: 'Pending' })
+    setConfirmed(bookingId)
+  }
+
+  if (confirmed) return <div className="booking-confirmation"><span className="confirmation-check"><Check size={28}/></span><span className="section-kicker">SEAT RESERVED IN DEMO MODE</span><h1>You’re on your way.</h1><p>Your demo booking reference is <strong>{confirmed}</strong>. No payment has been taken and no operator has been notified.</p><div className="confirmation-summary"><span>{boardStop.name} → {alightStop.name}</span><span>{formatDate(trip.date)} · {boardStop.scheduledTime || trip.departure} – {alightStop.scheduledTime || trip.arrival}</span><span>{seats} seat{seats > 1 ? 's' : ''} · {formatLkr(total)} (full-route demo fare)</span></div><div><Link className="button button-primary" to={`/passenger/tickets?booking=${confirmed}`}>See your ticket <ArrowRight size={15}/></Link><Link className="button button-outline" to="/passenger">Back to dashboard</Link></div></div>
+
+  return <><Link className="portal-back-link" to={detailUrl}><ArrowLeftIcon/> Journey details</Link><Heading kicker="RESERVE YOUR SEAT" title="One more step." text="Confirm your traveller details. No payment information is requested."/><div className="booking-layout"><form className="booking-form portal-panel" onSubmit={submit}><h2>Passenger details</h2><p>Who will be travelling on this booking?</p><label>Full name<input value={name} onChange={e => setName(e.target.value)} required autoComplete="name"/></label><label>Contact phone<input value={phone} onChange={e => setPhone(e.target.value)} required autoComplete="tel"/></label><label>Number of seats<select value={seats} onChange={e => setSeats(Number(e.target.value))}>{Array.from({ length: Math.min(6, remaining) }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1} {index === 0 ? 'seat' : 'seats'}</option>)}</select></label>{error && <p className="auth-error" role="alert">{error}</p>}<div className="booking-notice"><Info size={16}/> Demo reservation only. No real payment is processed.</div><button className="button button-primary booking-submit" disabled={remaining < 1 || trip.status !== 'Scheduled' || trip.date < today()}>Confirm demo booking <ArrowRight size={16}/></button></form><aside className="booking-summary portal-panel"><span>YOUR JOURNEY</span><h2>{boardStop.name} <i>to</i> {alightStop.name}</h2><div className="summary-detail"><CalendarDays size={15}/>{formatDate(trip.date)} · {boardStop.scheduledTime || trip.departure} – {alightStop.scheduledTime || trip.arrival}</div><div className="summary-detail"><BusFront size={15}/>{vehicle?.name} · {vehicle?.plate}</div><hr/><div className="summary-price"><span>{formatLkr(fare)} × {seats} seat{seats > 1 ? 's' : ''}</span><strong>{formatLkr(total)}</strong></div><small>Full-route demo fare applied; segment pricing is not yet available. No payment is processed.</small></aside></div></>
 }
 
 export function MyBookings() {
+
   const {data,session,updateRecord}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const bookings=data.bookings.filter(booking=>booking.passengerId===passenger?.id).sort((a,b)=>b.bookedAt.localeCompare(a.bookedAt));const [tab,setTab]=useState('All')
+
   const filtered=bookings.filter(booking=>tab==='All'||(tab==='Upcoming'&&data.trips.find(t=>t.id===booking.tripId)?.date>=today()&&booking.status!=='Cancelled')||(tab==='Past'&&(data.trips.find(t=>t.id===booking.tripId)?.date<today()||booking.status==='Cancelled')))
+
   const cancel=booking=>{if(booking.status==='Cancelled')return;if(window.confirm(`Cancel demo booking ${booking.id}?`))updateRecord('bookings',booking.id,{status:'Cancelled'})}
-  return <><Heading kicker="YOUR TRAVEL HISTORY" title="My bookings." text="Your upcoming journeys and past adventures." action={<Link to="/passenger/search" className="button button-primary"><Search size={15}/> Find a trip</Link>}/><div className="portal-tabs">{['All','Upcoming','Past'].map(item=><button key={item} className={tab===item?'active':''} onClick={()=>setTab(item)}>{item}<small>{item==='All'?bookings.length:bookings.filter(b=>item==='Upcoming'?data.trips.find(t=>t.id===b.tripId)?.date>=today()&&b.status!=='Cancelled':data.trips.find(t=>t.id===b.tripId)?.date<today()||b.status==='Cancelled').length}</small></button>)}</div>{filtered.length?<div className="booking-record-list">{filtered.map(booking=>{const trip=data.trips.find(t=>t.id===booking.tripId);const {route,vehicle}=tripInfo(data,trip||{});return <article className="booking-record" key={booking.id}><div className="booking-record-icon"><Ticket size={19}/></div><div className="booking-record-main"><span className="booking-reference">{booking.id} <Status>{booking.status}</Status></span><strong>{route?.origin} <i>→</i> {route?.destination}</strong><span>{trip?formatDate(trip.date):'Journey date unavailable'} · {trip?.departure} · {booking.seats} seat{booking.seats>1?'s':''} · {vehicle?.name}</span></div><div className="booking-record-side"><strong>{formatLkr(booking.amount)}</strong><Link to={`/passenger/tickets?booking=${booking.id}`}>Ticket details <ArrowRight size={14}/></Link>{booking.status==='Confirmed'&&trip?.date>=today()&&<button onClick={()=>cancel(booking)}>Cancel booking</button>}</div></article>})}</div>:<Empty title={`No ${tab.toLowerCase()} bookings`} text="Your SmartMove reservations will show up here." action={<Link className="button button-primary" to="/passenger/search">Browse routes</Link>}/>}</>
+
+  return <><Heading kicker="YOUR TRAVEL HISTORY" title="My bookings." text="Your upcoming journeys and past adventures." action={<Link to="/passenger/search" className="button button-primary"><Search size={15}/> Find a trip</Link>}/><div className="portal-tabs">{['All','Upcoming','Past'].map(item=><button key={item} className={tab===item?'active':''} onClick={()=>setTab(item)}>{item}<small>{item==='All'?bookings.length:bookings.filter(b=>item==='Upcoming'?data.trips.find(t=>t.id===b.tripId)?.date>=today()&&b.status!=='Cancelled':data.trips.find(t=>t.id===b.tripId)?.date<today()||b.status==='Cancelled').length}</small></button>)}</div>{filtered.length?<div className="booking-record-list">{filtered.map(booking=>{const trip=data.trips.find(t=>t.id===booking.tripId);const {route,vehicle}=tripInfo(data,trip||{});return <article className="booking-record" key={booking.id}><div className="booking-record-icon"><Ticket size={19}/></div><div className="booking-record-main"><span className="booking-reference">{booking.id} <Status>{booking.status}</Status></span><strong>{bookingJourney(booking,route,trip).from} <i>→</i> {bookingJourney(booking,route,trip).to}</strong><span>{trip?formatDate(trip.date):'Journey date unavailable'} · {bookingJourney(booking,route,trip).departure} · {booking.seats} seat{booking.seats>1?'s':''} · {vehicle?.name}</span></div><div className="booking-record-side"><strong>{formatLkr(booking.amount)}</strong><Link to={`/passenger/tickets?booking=${booking.id}`}>Ticket details <ArrowRight size={14}/></Link>{booking.status==='Confirmed'&&trip?.date>=today()&&<button onClick={()=>cancel(booking)}>Cancel booking</button>}</div></article>})}</div>:<Empty title={`No ${tab.toLowerCase()} bookings`} text="Your SmartMove reservations will show up here." action={<Link className="button button-primary" to="/passenger/search">Browse routes</Link>}/>}</>
+
 }
 
+
+
 export function MyTickets() {
-  const {data,session}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const [params]=useSearchParams();const bookings=data.bookings.filter(booking=>booking.passengerId===passenger?.id&&booking.status!=='Cancelled'&&(!params.get('booking')||params.get('booking')===booking.id));return <><Heading kicker="READY WHEN YOU ARE" title="My tickets." text="Your booking references and trip details, easy to find." action={<button className="button button-outline" onClick={()=>window.print()}><Download size={15}/> Print tickets</button>}/>{bookings.length?<div className="ticket-grid">{bookings.map(booking=>{const trip=data.trips.find(t=>t.id===booking.tripId);const {route,vehicle,driver}=tripInfo(data,trip||{});return <article className="ticket-card" key={booking.id}><div className="ticket-top"><span className="ticket-brand"><BusFront size={17}/> SMARTMOVE</span><Status>{booking.status}</Status></div><div className="ticket-main"><span>BOOKING REFERENCE</span><strong>{booking.id}</strong><h2>{route?.origin} <i>→</i><br/>{route?.destination}</h2><div className="ticket-date"><CalendarDays size={15}/>{trip?formatDate(trip.date):'Date unavailable'} · {trip?.departure}</div><div className="ticket-route-cities"><span>{route?.origin}<small>DEPARTURE</small></span><span>{route?.destination}<small>DESTINATION</small></span></div></div><div className="ticket-bottom"><span><small>PASSENGER</small><b>{passenger?.name}</b></span><span><small>SEATS</small><b>{booking.seats}</b></span><span><small>VEHICLE</small><b>{vehicle?.plate||'—'}</b></span><span><small>FARE</small><b>{formatLkr(booking.amount)}</b></span></div><div className="ticket-driver-note">Driver: {driver?.name||'Assigned operator'} · Demo ticket, not valid for travel.</div></article>})}</div>:<Empty title="Your ticket wallet is waiting" text="Confirm a demo booking to see its ticket details here." action={<Link to="/passenger/search" className="button button-primary">Find a journey</Link>}/>}</>
+
+  const {data,session}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const [params]=useSearchParams();const bookings=data.bookings.filter(booking=>booking.passengerId===passenger?.id&&booking.status!=='Cancelled'&&(!params.get('booking')||params.get('booking')===booking.id));return <><Heading kicker="READY WHEN YOU ARE" title="My tickets." text="Your booking references and trip details, easy to find." action={<button className="button button-outline" onClick={()=>window.print()}><Download size={15}/> Print tickets</button>}/>{bookings.length?<div className="ticket-grid">{bookings.map(booking=>{const trip=data.trips.find(t=>t.id===booking.tripId);const {route,vehicle,driver}=tripInfo(data,trip||{});return <article className="ticket-card" key={booking.id}><div className="ticket-top"><span className="ticket-brand"><BusFront size={17}/> SMARTMOVE</span><Status>{booking.status}</Status></div><div className="ticket-main"><span>BOOKING REFERENCE</span><strong>{booking.id}</strong><h2>{bookingJourney(booking,route,trip).from} <i>→</i><br/>{bookingJourney(booking,route,trip).to}</h2><div className="ticket-date"><CalendarDays size={15}/>{trip?formatDate(trip.date):'Date unavailable'} · {bookingJourney(booking,route,trip).departure}</div><div className="ticket-route-cities"><span>{bookingJourney(booking,route,trip).from}<small>BOARDING</small></span><span>{bookingJourney(booking,route,trip).to}<small>DESTINATION</small></span></div></div><div className="ticket-bottom"><span><small>PASSENGER</small><b>{passenger?.name}</b></span><span><small>SEATS</small><b>{booking.seats}</b></span><span><small>VEHICLE</small><b>{vehicle?.plate||'—'}</b></span><span><small>FARE</small><b>{formatLkr(booking.amount)}</b></span></div><div className="ticket-driver-note">Driver: {driver?.name||'Assigned operator'} · Demo ticket, not valid for travel.</div></article>})}</div>:<Empty title="Your ticket wallet is waiting" text="Confirm a demo booking to see its ticket details here." action={<Link to="/passenger/search" className="button button-primary">Find a journey</Link>}/>}</>
+
 }
+
+
 
 export function PassengerPayments() {const {data,session}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const bookings=data.bookings.filter(item=>item.passengerId===passenger?.id);const payments=data.payments.filter(payment=>bookings.some(booking=>booking.id===payment.bookingId));return <><Heading kicker="BOOKING RECORDS" title="Payment history." text="Administrative demo records for your bookings. No real payment processing."/><div className="payment-demo-banner"><Wallet size={18}/><span><strong>Demo payment records only</strong><small>No card details are collected or stored. These records do not represent a live transaction.</small></span></div>{payments.length?<div className="booking-record-list">{payments.map(payment=>{const booking=bookings.find(item=>item.id===payment.bookingId);return <article className="booking-record" key={payment.id}><div className="booking-record-icon"><Wallet size={19}/></div><div className="booking-record-main"><span className="booking-reference">{payment.id} <Status>{payment.status}</Status></span><strong>{formatLkr(payment.amount)}</strong><span>Booking {booking?.id} · {formatDate(payment.date)} · {payment.method}</span></div><div className="booking-record-side"><span className="payment-reference">{payment.reference}</span><small>Reference only</small></div></article>})}</div>:<Empty title="No payment records yet" text="Administrative records for your demo bookings appear here." action={<Link to="/passenger/bookings" className="button button-outline">My bookings</Link>}/>}</>}
 
+
+
 export function PassengerReviews() {const {data,session,addRecord}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const [tripId,setTripId]=useState('');const [rating,setRating]=useState(5);const [comment,setComment]=useState('');const [error,setError]=useState('');const eligible=data.bookings.filter(booking=>booking.passengerId===passenger?.id&&booking.status==='Confirmed').map(booking=>data.trips.find(trip=>trip.id===booking.tripId)).filter(trip=>trip&&trip.date<today()&&!data.reviews.some(review=>review.passengerId===passenger?.id&&review.tripId===trip.id));const reviews=data.reviews.filter(review=>review.passengerId===passenger?.id)
+
  const submit=event=>{event.preventDefault();if(!tripId)return setError('Choose a completed trip to review.');if(comment.trim().length<8)return setError('Please share a little more detail (at least 8 characters).');addRecord('reviews',{passengerId:passenger.id,tripId,rating:Number(rating),date:today(),comment:comment.trim(),status:'Published'});setTripId('');setComment('');setRating(5);setError('')}
+
  return <><Heading kicker="YOUR VOICE MATTERS" title="Share the ride." text="Let other travellers know how your journey went."/>{eligible.length>0&&<form className="review-form portal-panel" onSubmit={submit}><h2>Leave a review</h2><p>Only completed trips from your demo bookings are available to review.</p><label>Trip<select required value={tripId} onChange={e=>setTripId(e.target.value)}><option value="">Choose a completed trip</option>{eligible.map(trip=>{const route=data.routes.find(r=>r.id===trip.routeId);return <option key={trip.id} value={trip.id}>{route?.origin} to {route?.destination} · {formatDate(trip.date)}</option>})}</select></label><div className="rating-picker"><span>Your rating</span>{[1,2,3,4,5].map(value=><button type="button" key={value} aria-label={`${value} stars`} className={value<=rating?'active':''} onClick={()=>setRating(value)}><Star size={22} fill="currentColor"/></button>)}</div><label>Your comments<textarea rows="3" value={comment} onChange={e=>setComment(e.target.value)} placeholder="What made this journey memorable?" required/></label>{error&&<p className="form-error-text">{error}</p>}<button className="button button-primary">Share review <ArrowRight size={14}/></button></form>}{reviews.length?<Panel title="Your reviews" subtitle="Feedback shared from your passenger profile."><div className="pass-review-list">{reviews.map(review=>{const trip=data.trips.find(t=>t.id===review.tripId);const route=data.routes.find(r=>r.id===trip?.routeId);return <article key={review.id}><span className="review-stars">{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</span><Status>{review.status}</Status><p>“{review.comment}”</p><small>{route?.origin} → {route?.destination} · {formatDate(review.date)}</small></article>})}</div></Panel>:!eligible.length&&<Empty title="Your first review is still ahead" text="After a completed trip, you can share feedback with fellow travellers." action={<Link className="button button-outline" to="/passenger/search">Find a journey</Link>}/>}</>
+
 }
 
+
+
 export function PassengerAnnouncements() {const {data}=useAppData();const items=data.announcements.filter(item=>item.status==='Published'&&item.audience!=='Drivers');return <><Heading kicker="A NOTE FROM THE ROAD" title="Travel notices." text="Helpful updates from the SmartMove team."/>{items.length?<div className="announcement-list">{items.map(item=><article className="announcement-card" key={item.id}><span className="announcement-icon"><MegaphoneSmall/></span><div><span className="announcement-meta">{formatDate(item.date)} · {item.audience}</span><h2>{item.title}</h2><p>{item.message}</p></div></article>)}</div>:<Empty title="All quiet on the route" text="There are no travel notices for passengers right now."/>}</>}
+
 function MegaphoneSmall(){return <BusFront size={18}/>}
+
+
 
 export function PassengerProfile() {const {data,session,updateAccountAndProfile}=useAppData();const passenger=data.passengers.find(person=>person.id===session?.userId);const account=data.users.find(user=>user.linkedProfileId===passenger?.id);const [values,setValues]=useState({name:passenger?.name||'',email:account?.email||passenger?.email||'',phone:passenger?.phone||'',city:passenger?.city||'Colombo'});const [saved,setSaved]=useState(false);const [error,setError]=useState('');const submit=event=>{event.preventDefault();setError('');if(!values.name.trim())return setError('Name is required.');if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email))return setError('Enter a valid email address.');const result=updateAccountAndProfile(account.userId,'PASSENGER',values,{email:values.email.trim().toLowerCase()});if(result?.error)return setError(result.error);setSaved(true);window.setTimeout(()=>setSaved(false),2500)};return <><Heading kicker="YOUR DETAILS, YOUR WAY" title="My profile." text="Keep your passenger contact details up to date."/><div className="profile-layout"><form className="profile-form portal-panel" onSubmit={submit}><div className="profile-form-heading"><span className="profile-big-avatar">{passenger?.name?.split(' ').map(part=>part[0]).slice(0,2).join('')}</span><div><strong>{passenger?.name}</strong><small>Passenger profile · {passenger?.id}</small></div></div><label>Full name<input value={values.name} onChange={e=>setValues({...values,name:e.target.value})}/></label><label>Email address<input type="email" value={values.email} onChange={e=>setValues({...values,email:e.target.value})}/></label><label>Phone number<input type="tel" value={values.phone} onChange={e=>setValues({...values,phone:e.target.value})}/></label><label>Home city<select value={values.city} onChange={e=>setValues({...values,city:e.target.value})}>{['Colombo','Kandy','Galle','Jaffna','Negombo','Nuwara Eliya','Ella'].map(city=><option key={city}>{city}</option>)}</select></label>{error&&<p className="form-error-text">{error}</p>}{saved&&<p className="profile-saved"><Check size={15}/> Profile updated in this browser.</p>}<button className="button button-primary">Save profile <Check size={15}/></button></form><aside className="profile-note portal-panel"><span><ShieldCheck size={20}/></span><h2>Profile, not password storage.</h2><p>Demo profiles are stored in this browser. Passwords are not saved. Secure account settings need backend authentication.</p><div><small>ACCOUNT ID</small><strong>{account?.userId}</strong></div><div><small>MEMBER SINCE</small><strong>{formatDate(passenger?.joined)}</strong></div></aside></div></>}
