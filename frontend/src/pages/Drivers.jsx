@@ -1,2 +1,2 @@
-import EntityPage from '../components/EntityPage'
-export default function Drivers() { return <EntityPage entity="drivers" /> }
+import AccountManagement from '../components/AccountManagement'
+export default function Drivers() { return <AccountManagement kind="DRIVER" /> }

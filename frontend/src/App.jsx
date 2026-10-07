@@ -1,10 +1,10 @@
 import { lazy, Suspense, useState } from 'react'
-import { BrowserRouter, Link, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Navbar from './components/Navbar'
 import RouteGuard from './components/portal/RouteGuard'
 import { PortalShell } from './components/portal/PortalShell'
-import { BusFront } from 'lucide-react'
+import { BusFront, ShieldCheck } from 'lucide-react'
 import { DataProvider } from './services/AppContext'
 import { useAppData } from './services/useAppData'
 import { PassengerDashboard, SearchTrips, PassengerTripDetails, BookTicket, MyBookings, MyTickets, PassengerPayments, PassengerReviews, PassengerAnnouncements, PassengerProfile } from './pages/portal/PassengerPortal'
@@ -23,6 +23,7 @@ const Maintenance = lazy(() => import('./pages/Maintenance'))
 const Reviews = lazy(() => import('./pages/Reviews'))
 const Announcements = lazy(() => import('./pages/Announcements'))
 const Reports = lazy(() => import('./pages/Reports'))
+const AdminManagement = lazy(() => import('./components/AccountManagement'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -32,8 +33,8 @@ function AdminShell() {
   return <div className="app-shell"><Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} /><div className="app-main"><Navbar onMenu={() => setMenuOpen(true)} /><main className="main-content"><Suspense fallback={<div className="page-loading">Loading workspace…</div>}><Outlet/></Suspense></main><footer className="app-footer"><span>© 2026 SmartMove Transport Solutions</span><span>Operations console <i /> Demo environment</span></footer></div></div>
 }
 
-function GuardedPortal({ role, children }) {
-  return <RouteGuard role={role}>{children}</RouteGuard>
+function GuardedPortal({ role, children, superAdminOnly = false }) {
+  return <RouteGuard role={role} superAdminOnly={superAdminOnly}>{children}</RouteGuard>
 }
 
 function PublicTravelPage({ children }) {
@@ -41,9 +42,17 @@ function PublicTravelPage({ children }) {
 }
 
 function PassengerSearchEntry() {
-  const { session } = useAppData()
-  if (session?.role === 'passenger') return <PortalShell role="passenger"><SearchTrips/></PortalShell>
+  const { currentUser } = useAppData()
+  if (currentUser?.role === 'PASSENGER' && currentUser.accountStatus === 'ACTIVE') return <PortalShell role="passenger"><SearchTrips/></PortalShell>
   return <PublicTravelPage><SearchTrips/></PublicTravelPage>
+}
+
+function PassengerBookEntry() {
+  const { session, currentUser } = useAppData()
+  const { pathname, search } = useLocation()
+  if (!session || currentUser?.accountStatus !== 'ACTIVE') return <Navigate to={`/login?next=${encodeURIComponent(pathname + search)}`} replace/>
+  if (currentUser?.role !== 'PASSENGER') return <PublicTravelPage><div className="booking-role-notice"><ShieldCheck size={25}/><h1>Passenger account required</h1><p>Only passenger accounts can make demo bookings. You are signed in with a {currentUser?.role?.replace('_',' ') || 'non-passenger'} account.</p><Link className="button button-outline" to="/">Return home</Link><Link className="button button-primary" to="/login?switch=1">Switch demo account</Link></div></PublicTravelPage>
+  return <PortalShell role="passenger"><BookTicket/></PortalShell>
 }
 
 function AppRoutes() {
@@ -53,9 +62,9 @@ function AppRoutes() {
     <Route path="/register" element={<Register/>}/>
     <Route path="/passenger/search" element={<PassengerSearchEntry/>}/>
     <Route path="/passenger/trip/:tripId" element={<PublicTravelPage><PassengerTripDetails/></PublicTravelPage>}/>
+    <Route path="/passenger/book/:tripId" element={<PassengerBookEntry/>}/>
     <Route path="/passenger" element={<GuardedPortal role="passenger"><PortalShell role="passenger"/></GuardedPortal>}>
       <Route index element={<PassengerDashboard/>}/>
-      <Route path="book/:tripId" element={<BookTicket/>}/>
       <Route path="bookings" element={<MyBookings/>}/>
       <Route path="tickets" element={<MyTickets/>}/>
       <Route path="payments" element={<PassengerPayments/>}/>
@@ -75,7 +84,7 @@ function AppRoutes() {
       <Route path="profile" element={<DriverProfile/>}/>
     </Route>
     <Route path="/admin" element={<GuardedPortal role="admin"><AdminShell/></GuardedPortal>}>
-      <Route index element={<Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="reports" element={<Reports/>}/>
+      <Route index element={<Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="reports" element={<Reports/>}/><Route path="admin-management" element={<GuardedPortal role="admin" superAdminOnly><AdminManagement kind="ADMIN"/></GuardedPortal>}/>
     </Route>
     {['vehicles','drivers','routes','trips','passengers','bookings','payments','maintenance','reviews','announcements','reports'].map(path=><Route key={path} path={`/${path}`} element={<Navigate to={`/admin/${path}`} replace/>}/>)}
     <Route path="*" element={<Navigate to="/" replace/>}/>

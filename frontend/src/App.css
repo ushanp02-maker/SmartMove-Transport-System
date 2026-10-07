@@ -25,6 +25,7 @@
 .avatar-green { background: #d5e1d4; color: #2a593b; }
 .sidebar-user strong { display: block; font-size: 11px; color: #f5f8f4; }
 .sidebar-user span:not(.more-dots) { display: block; color: #a9beac; font-size: 9px; margin-top: 2px; }
+.admin-signout { margin-left:auto;display:grid;place-items:center;padding:5px;border:0;border-radius:5px;background:transparent;color:#b7cbb9; }.admin-signout:hover { background:#ffffff12;color:white; }
 .more-dots { margin-left: auto; color: #b7cbb9; letter-spacing: 2px; }
 .mobile-close,.menu-button,.sidebar-scrim { display: none; }
 .app-main { width: calc(100% - 252px); min-height: 100vh; margin-left: 252px; display: flex; flex-direction: column; }
@@ -532,19 +533,23 @@ tbody tr:hover { background: #fcfdfb; }
 .auth-signup { text-align:center;color:#879188;font-size:9px;margin:15px 0; }
 .auth-signup a { color:#4e7554;font-weight:650; }
 .driver-provision-note { display:flex;align-items:center;gap:6px;padding:9px;background:#f8f3e6;border-radius:5px;color:#89713e;font-size:8px;line-height:1.5; }
-.auth-demo-users { border-top:1px solid #e9ede7;padding-top:11px;margin-top:13px; }
-.auth-demo-users > span { color:#96a095;font-size:7px;font-weight:700;letter-spacing:1px; }
-.auth-demo-users button { width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:transparent;padding:8px 0 0;text-align:left;color:#526755;font-size:8px; }
-.auth-demo-users button small { color:#9ba49b;font-size:7px; }
-.auth-demo-users p { color:#89958b;font-size:8px;margin:7px 0 0; }
 .auth-footer { display:flex;justify-content:space-between;gap:9px;color:#9aa39b;font-size:7px;margin-top:20px; }
+.auth-form-links { display:flex;align-items:center;justify-content:space-between;margin-top:-6px; }.auth-form-links button { border:0;background:transparent;color:#56785b;font-size:8px;padding:0; }.auth-form-links small { color:#9aa39a;font-size:7px; }
+.demo-consent { display:flex!important;flex-direction:row!important;align-items:flex-start!important;gap:7px!important;padding:8px;background:#f4f6f1;border:1px solid #ebefe8;border-radius:5px;color:#7e8a7f!important;font-size:7px!important;line-height:1.45; }.demo-consent input { width:13px;height:13px;flex:0 0 auto;margin:1px 0 0;accent-color:#315c3b; }.demo-consent strong { color:#547056; }
+.auth-footer button { border:0;background:transparent;padding:0;color:#59765e;font-size:7px; }
 .register-box { width:min(410px,100%); }
+.account-activation-note { display:flex;align-items:flex-start;gap:8px;padding:10px;background:#eff5ed;border:1px solid #e4ede1;border-radius:6px;color:#718872;font-size:8px;line-height:1.5;margin-bottom:13px; }.account-activation-note svg { flex:0 0 auto; }.account-activation-note.page-activation { margin:0 0 13px; }
+.account-summary-stats { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:17px; }.account-summary-stats > div { padding:13px 15px;background:#fff;border:1px solid #e9ede7;border-radius:8px;box-shadow:var(--shadow); }.account-summary-stats span,.account-summary-stats strong { display:block; }.account-summary-stats span { color:#879187;font-size:9px; }.account-summary-stats strong { color:#304034;font-size:19px;margin-top:6px; }
+.account-name-cell { display:block;color:#47594a;font-size:9px; }.account-id-cell { display:block;color:#9aa49a;font-size:7px;margin-top:4px; }.role-chip { display:inline-flex;padding:4px 7px;border-radius:12px;background:#edf1ed;color:#738074;font-size:7px;font-weight:650; }.role-chip.super-admin { background:#e7f0e5;color:#4e7754; }
+.account-toggle { min-height:25px;display:inline-flex;align-items:center;gap:4px;padding:0 7px;border-radius:5px;font-size:7px;font-weight:600; }.account-toggle.disable { border:1px solid #eedfda;background:#fff;color:#a76256; }.account-toggle.enable { border:1px solid #dce9da;background:#f5f9f3;color:#5d805e; }.account-toggle:hover { filter:brightness(.97); }
+.account-table-card .row-actions { gap:5px; }.account-table-card .table-footer span { color:#9aa39a; }.account-modal .account-status-field { display:flex;flex-direction:column;gap:6px;color:#667269;font-size:10px;font-weight:600;margin-top:13px; }.account-status-field select { width:100%;height:36px;border:1px solid #e2e8e0;border-radius:6px;background:white;color:#38463b;padding:0 10px;font-size:10px; }.account-modal .form-grid label input { min-width:0; }
+.booking-role-notice { min-height:48vh;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;color:#66886a; }.booking-role-notice h1 { color:#344a38;font-size:24px;margin:13px 0 5px; }.booking-role-notice p { max-width:380px;color:#808d82;font-size:9px;line-height:1.6;margin:0 0 15px; }.booking-role-notice .button { margin:4px; }
+  .form-grid { display: grid; grid-template-columns: 1fr; gap: 13px; }
 .register-box .auth-subtitle { margin-bottom:11px; }
 .register-box .auth-form { gap:9px; }
 .register-box .auth-form input { height:35px; }
 .account-rule { display:flex;gap:7px;align-items:flex-start;background:#eff5ed;color:#68816b;padding:8px;border-radius:5px;margin-bottom:11px;font-size:8px;line-height:1.5; }
 .account-rule svg { flex:0 0 auto; }
-.register-box .auth-demo-users { display:none; }
 .auth-mobile-logo { display:none; }
 .auth-error { color:#a7514b;font-size:8px;padding:8px 9px;background:#f9eeeb;border:1px solid #f0ded9;border-radius:5px;margin:0; }
 
@@ -876,4 +881,5 @@ tbody tr:hover { background: #fcfdfb; }
 @media print {
   .portal-sidebar,.portal-topbar,.portal-footer,.portal-page-heading,.portal-back-link,.ticket-top .portal-status { display:none!important; }
   .portal-main { margin:0;width:100%; }.portal-content { padding:0;max-width:none; }.ticket-grid { display:block; }.ticket-card { page-break-inside:avoid;margin:0 auto 12px;max-width:550px;box-shadow:none; }
+  .account-summary-stats { gap:7px; }.account-summary-stats > div { padding:10px; }.account-summary-stats span { font-size:7px; }.account-summary-stats strong { font-size:16px; }.account-table-card .table-footer span { float:none;display:block;margin-top:4px; }
 }

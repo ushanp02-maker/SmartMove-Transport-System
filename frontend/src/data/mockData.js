@@ -1,4 +1,12 @@
 export const initialData = {
+	users: [
+		{ userId: 'USR-ADMIN-001', username: 'superadmin', email: 'admin@smartmove.lk', role: 'SUPER_ADMIN', accountStatus: 'ACTIVE', linkedProfileId: 'ADM-001' },
+		{ userId: 'USR-ADMIN-002', username: 'operations', email: 'operations@smartmove.lk', role: 'ADMIN', accountStatus: 'ACTIVE', linkedProfileId: 'ADM-002' },
+	],
+	admins: [
+		{ id: 'ADM-001', name: 'Amara Silva', email: 'admin@smartmove.lk', username: 'superadmin', phone: '+94 77 100 0001' },
+		{ id: 'ADM-002', name: 'Nimali Fernando', email: 'operations@smartmove.lk', username: 'operations', phone: '+94 71 100 0002' },
+	],
 	vehicles: [
 		{ id: 'VH-1042', name: 'Toyota Coaster', plate: 'NB-7842', type: 'Mini Coach', capacity: 28, status: 'Active', mileage: 68420, nextService: '2025-11-14' },
 		{ id: 'VH-1088', name: 'Isuzu Journey', plate: 'NC-2190', type: 'Coach', capacity: 42, status: 'Active', mileage: 92410, nextService: '2025-11-20' },

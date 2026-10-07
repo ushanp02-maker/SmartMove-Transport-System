@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, Link } from 'react-router-dom'
 import { BusFront, LayoutDashboard, Search, Ticket, Wallet, Star, Megaphone, UserRound, CalendarDays, ClipboardList, CircleAlert, Menu, X, LogOut, ChevronDown, Route, Clock3 } from 'lucide-react'
 import { useAppData } from '../../services/useAppData'
 
@@ -26,13 +26,12 @@ const driverLinks = [
 
 export function PortalShell({ role, children }) {
   const [open, setOpen] = useState(false)
-  const { data, session, signOut } = useAppData()
-  const navigate = useNavigate()
-  const driver = data.drivers.find(item => item.id === session?.userId) || data.drivers[0]
-  const passenger = data.passengers.find(item => item.id === session?.userId) || data.passengers[0]
+  const { data, currentUser, signOut } = useAppData()
+  const driver = data.drivers.find(item => item.id === currentUser?.linkedProfileId) || data.drivers[0]
+  const passenger = data.passengers.find(item => item.id === currentUser?.linkedProfileId) || data.passengers[0]
   const user = role === 'driver' ? driver : passenger
   const links = role === 'driver' ? driverLinks : passengerLinks
-  const logout = () => { signOut(); navigate('/') }
+  const logout = () => { signOut(); window.location.assign('/') }
   return <div className="portal-shell">
     <div className={`portal-scrim ${open ? 'open' : ''}`} onClick={() => setOpen(false)} />
     <aside className={`portal-sidebar ${open ? 'open' : ''}`}>
