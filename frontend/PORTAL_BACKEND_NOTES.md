@@ -2,13 +2,12 @@
 
 The public website, authentication screens, passenger portal, driver portal, and admin workspace currently use shared `mockData.js` fixtures plus browser `localStorage` for demo records. This is not a connected Spring Boot or Oracle service. One shared demo `users` collection holds `userId`, `username`, `email`, `role`, `accountStatus`, and `linkedProfileId`; passenger, driver, and admin profile records remain separate. Allowed roles are `PASSENGER`, `DRIVER`, `ADMIN`, and `SUPER_ADMIN`. Unified demo sign-in looks up email/username and determines role from that account record. Password text is required by the login UI, explicitly not verified, and never persisted. Role guards are client UX only, not access controls. No secret or payment-card data is persisted.
 
+See [BACKEND_INTEGRATION_PLAN.md](BACKEND_INTEGRATION_PLAN.md) for the proposed commuter, staff, custom-trip, route-stop, map, tracking, Oracle and MongoDB integration contract. None of those services or databases is connected.
+
 ## Demo identities and account lifecycle
 
-- Initial SUPER_ADMIN: username `superadmin`, email `admin@smartmove.lk`, linked to `ADM-001`.
-- Initial ordinary ADMIN: username `operations`, email `operations@smartmove.lk`, linked to `ADM-002`.
-- Existing passenger profiles are compatible demo accounts. Their usernames default to their email local part; use the profile email or username displayed on the unified login screen.
-- Existing driver profiles are migrated to demo accounts. If a legacy driver profile has no email, its username defaults to its profile ID (for example `dr-201`) and its synthetic address is `{username}@driver.smartmove.demo`. The login screen lists accounts and usernames.
-- Admin-provisioned drivers and admins get an active demo account without a generated password. The demo sign-in notice explicitly explains that any non-empty password field is not checked. This is not account activation or secure authentication.
+- Existing passenger profiles are compatible demo accounts. Their usernames default to their email local part; use the profile email or that username.
+- Existing driver profiles are migrated to demo accounts. If a legacy driver profile has no email, its username defaults to the profile ID (for example `dr-201`) and its synthetic address is `{username}@driver.smartmove.demo`.
 - Passengers self-register with a separate profile and unified account. Driver/admin account creation is not publicly available. Only SUPER_ADMIN can manage other administrator accounts; all admin levels use `/admin`.
 
 In production the common Oracle `USERS` table should store password hashes (not browser-side secrets) and link to `PASSENGERS` or `DRIVERS` through a constrained role/profile relationship. ADMIN and SUPER_ADMIN records link to administrator profiles or an equivalent staff table.

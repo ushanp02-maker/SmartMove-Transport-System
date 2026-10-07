@@ -7,6 +7,15 @@ export const initialData = {
 		{ id: 'ADM-001', name: 'Amara Silva', email: 'admin@smartmove.lk', username: 'superadmin', phone: '+94 77 100 0001' },
 		{ id: 'ADM-002', name: 'Nimali Fernando', email: 'operations@smartmove.lk', username: 'operations', phone: '+94 71 100 0002' },
 	],
+	companies: [
+		{ id: 'CO-001', name: 'LankaTech Solutions', workplace: 'Orion City, Colombo', employeeIds: ['EMP-1101', 'EMP-1102'] },
+		{ id: 'CO-002', name: 'Ceylon Finance Group', workplace: 'World Trade Center, Colombo', employeeIds: ['EMP-2201'] },
+	],
+	employees: [
+		{ id: 'EMP-1101', passengerId: 'PS-5831', companyId: 'CO-001', employeeCode: 'LT-1101', eligible: true },
+		{ id: 'EMP-1102', passengerId: 'PS-5835', companyId: 'CO-001', employeeCode: 'LT-1102', eligible: true },
+		{ id: 'EMP-2201', passengerId: 'PS-5832', companyId: 'CO-002', employeeCode: 'CFG-2201', eligible: true },
+	],
 	vehicles: [
 		{ id: 'VH-1042', name: 'Toyota Coaster', plate: 'NB-7842', type: 'Mini Coach', capacity: 28, status: 'Active', mileage: 68420, nextService: '2025-11-14' },
 		{ id: 'VH-1088', name: 'Isuzu Journey', plate: 'NC-2190', type: 'Coach', capacity: 42, status: 'Active', mileage: 92410, nextService: '2025-11-20' },
@@ -21,12 +30,22 @@ export const initialData = {
 		{ id: 'DR-211', name: 'Ruwan Silva', phone: '+94 72 117 6408', license: 'B5210349', experience: 10, status: 'On duty', rating: 4.9 },
 	],
 	routes: [
-		{ id: 'RT-031', name: 'Colombo → Kandy', origin: 'Colombo', destination: 'Kandy', distance: 116, duration: '3h 15m', fare: 1850, status: 'Active' },
-		{ id: 'RT-044', name: 'Colombo → Galle', origin: 'Colombo', destination: 'Galle', distance: 126, duration: '2h 30m', fare: 1600, status: 'Active' },
-		{ id: 'RT-052', name: 'Kandy → Nuwara Eliya', origin: 'Kandy', destination: 'Nuwara Eliya', distance: 77, duration: '2h 45m', fare: 1400, status: 'Active' },
-		{ id: 'RT-067', name: 'Colombo → Jaffna', origin: 'Colombo', destination: 'Jaffna', distance: 398, duration: '7h 30m', fare: 4200, status: 'Active' },
-		{ id: 'RT-073', name: 'Colombo → Negombo', origin: 'Colombo', destination: 'Negombo', distance: 37, duration: '1h 10m', fare: 850, status: 'Active' },
-		{ id: 'RT-081', name: 'Colombo → Ella', origin: 'Colombo', destination: 'Ella', distance: 205, duration: '5h 15m', fare: 2750, status: 'Active' },
+		{ id: 'RT-031', name: 'Colombo → Kandy', origin: 'Colombo', destination: 'Kandy', distance: 116, duration: '3h 15m', fare: 1850, status: 'Active', serviceType: 'COMMUTER', stops: [{ stopOrder: 1, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '07:30' }, { stopOrder: 2, name: 'Kadawatha', latitude: 7.0010, longitude: 79.9500, scheduledTime: '08:05' }, { stopOrder: 3, name: 'Kurunegala', latitude: 7.4863, longitude: 80.3647, scheduledTime: '09:15' }, { stopOrder: 4, name: 'Kandy', latitude: 7.2906, longitude: 80.6337, scheduledTime: '10:45' }] },
+		{ id: 'RT-044', name: 'Colombo → Galle', origin: 'Colombo', destination: 'Galle', distance: 126, duration: '2h 30m', fare: 1600, status: 'Active', serviceType: 'COMMUTER', stops: [{ stopOrder: 1, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '08:00' }, { stopOrder: 2, name: 'Moratuwa', latitude: 6.7730, longitude: 79.8816, scheduledTime: '08:40' }, { stopOrder: 3, name: 'Kalutara', latitude: 6.5854, longitude: 79.9607, scheduledTime: '09:15' }, { stopOrder: 4, name: 'Galle', latitude: 6.0535, longitude: 80.2210, scheduledTime: '10:30' }] },
+		{ id: 'RT-052', name: 'Kandy → Nuwara Eliya', origin: 'Kandy', destination: 'Nuwara Eliya', distance: 77, duration: '2h 45m', fare: 1400, status: 'Active', serviceType: 'COMMUTER', stops: [{ stopOrder: 1, name: 'Kandy', latitude: 7.2906, longitude: 80.6337, scheduledTime: '09:15' }, { stopOrder: 2, name: 'Gampola', latitude: 7.1644, longitude: 80.5697, scheduledTime: '10:00' }, { stopOrder: 3, name: 'Nuwara Eliya', latitude: 6.9497, longitude: 80.7891, scheduledTime: '12:00' }] },
+		{ id: 'RT-067', name: 'Colombo → Jaffna', origin: 'Colombo', destination: 'Jaffna', distance: 398, duration: '7h 30m', fare: 4200, status: 'Active', serviceType: 'COMMUTER', stops: [{ stopOrder: 1, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '20:30' }, { stopOrder: 2, name: 'Anuradhapura', latitude: 8.3114, longitude: 80.4037, scheduledTime: '01:00' }, { stopOrder: 3, name: 'Vavuniya', latitude: 8.7514, longitude: 80.4971, scheduledTime: '02:30' }, { stopOrder: 4, name: 'Jaffna', latitude: 9.6615, longitude: 80.0255, scheduledTime: '04:00' }] },
+		{ id: 'RT-073', name: 'Colombo → Negombo', origin: 'Colombo', destination: 'Negombo', distance: 37, duration: '1h 10m', fare: 850, status: 'Active', serviceType: 'COMMUTER', stops: [{ stopOrder: 1, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '06:45' }, { stopOrder: 2, name: 'Wattala', latitude: 6.9890, longitude: 79.8920, scheduledTime: '07:05' }, { stopOrder: 3, name: 'Ja-Ela', latitude: 7.0752, longitude: 79.8919, scheduledTime: '07:25' }, { stopOrder: 4, name: 'Negombo', latitude: 7.2083, longitude: 79.8358, scheduledTime: '07:55' }] },
+		{ id: 'RT-081', name: 'Colombo → Ella', origin: 'Colombo', destination: 'Ella', distance: 205, duration: '5h 15m', fare: 2750, status: 'Active', serviceType: 'COMMUTER', stops: [{ stopOrder: 1, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428 }, { stopOrder: 2, name: 'Kandy', latitude: 7.2906, longitude: 80.6337 }, { stopOrder: 3, name: 'Nuwara Eliya', latitude: 6.9497, longitude: 80.7891 }, { stopOrder: 4, name: 'Ella', latitude: 6.8667, longitude: 81.0466 }] },
+		{ id: 'RT-092', name: 'Piliyandala → Colombo Fort', origin: 'Piliyandala', destination: 'Colombo Fort', distance: 28, duration: '1h 25m', fare: 650, status: 'Active', serviceType: 'COMMUTER', stops: [
+			{ stopOrder: 1, name: 'Piliyandala', latitude: 6.8014, longitude: 79.9227, scheduledTime: '06:15' }, { stopOrder: 2, name: 'Maharagama', latitude: 6.8480, longitude: 79.9265, scheduledTime: '06:35' }, { stopOrder: 3, name: 'Nugegoda', latitude: 6.8729, longitude: 79.8881, scheduledTime: '06:55' }, { stopOrder: 4, name: 'Borella', latitude: 6.9147, longitude: 79.8778, scheduledTime: '07:15' }, { stopOrder: 5, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '07:40' },
+		] },
+		{ id: 'RT-093', name: 'Moratuwa → Colombo Fort', origin: 'Moratuwa', destination: 'Colombo Fort', distance: 24, duration: '1h 10m', fare: 600, status: 'Active', serviceType: 'COMMUTER', stops: [
+			{ stopOrder: 1, name: 'Moratuwa', latitude: 6.7730, longitude: 79.8816, scheduledTime: '06:20' }, { stopOrder: 2, name: 'Dehiwala', latitude: 6.8510, longitude: 79.8650, scheduledTime: '06:45' }, { stopOrder: 3, name: 'Wellawatte', latitude: 6.8741, longitude: 79.8608, scheduledTime: '07:00' }, { stopOrder: 4, name: 'Bambalapitiya', latitude: 6.8964, longitude: 79.8560, scheduledTime: '07:10' }, { stopOrder: 5, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '07:30' },
+		] },
+	],
+	staffRoutes: [
+		{ id: 'ST-001', routeId: 'RT-ST-001', serviceType: 'STAFF', companyId: 'CO-001', companyName: 'LankaTech Solutions', name: 'Piliyandala → Orion City', origin: 'Piliyandala', destination: 'Orion City, Colombo', distance: 24, duration: '1h 10m', fare: 0, status: 'Active', operatingDays: ['Mon','Tue','Wed','Thu','Fri'], assignedVehicleId: 'VH-1161', assignedDriverId: 'DR-211', stops: [{ stopOrder: 1, name: 'Piliyandala', latitude: 6.8014, longitude: 79.9227, scheduledTime: '07:00' }, { stopOrder: 2, name: 'Maharagama', latitude: 6.8480, longitude: 79.9265, scheduledTime: '07:20' }, { stopOrder: 3, name: 'Nugegoda', latitude: 6.8729, longitude: 79.8881, scheduledTime: '07:40' }, { stopOrder: 4, name: 'Orion City, Colombo', latitude: 6.9271, longitude: 79.8612, scheduledTime: '08:10' }] },
+		{ id: 'ST-002', routeId: 'RT-ST-002', serviceType: 'STAFF', companyId: 'CO-002', companyName: 'Ceylon Finance Group', name: 'Negombo → WTC Colombo', origin: 'Negombo', destination: 'World Trade Center, Colombo', distance: 38, duration: '1h 25m', fare: 0, status: 'Active', operatingDays: ['Mon','Tue','Wed','Thu','Fri'], assignedVehicleId: 'VH-1042', assignedDriverId: 'DR-201', stops: [{ stopOrder: 1, name: 'Negombo', latitude: 7.2083, longitude: 79.8358, scheduledTime: '06:30' }, { stopOrder: 2, name: 'Ja-Ela', latitude: 7.0752, longitude: 79.8919, scheduledTime: '06:55' }, { stopOrder: 3, name: 'Colombo Fort', latitude: 6.9344, longitude: 79.8428, scheduledTime: '07:45' }, { stopOrder: 4, name: 'World Trade Center, Colombo', latitude: 6.9345, longitude: 79.8420, scheduledTime: '07:50' }] },
 	],
 	trips: [
 		{ id: 'TR-4021', routeId: 'RT-031', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2026-10-07', departure: '07:30', arrival: '10:45', seats: 28, status: 'Scheduled' },
@@ -36,6 +55,10 @@ export const initialData = {
 		{ id: 'TR-4024', routeId: 'RT-073', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2026-10-10', departure: '06:45', arrival: '07:55', seats: 28, status: 'Scheduled' },
 		{ id: 'TR-4025', routeId: 'RT-081', vehicleId: 'VH-1161', driverId: 'DR-211', date: '2026-10-11', departure: '06:30', arrival: '11:45', seats: 12, status: 'Scheduled' },
 		{ id: 'TR-4026', routeId: 'RT-067', vehicleId: 'VH-1194', driverId: 'DR-204', date: '2026-10-12', departure: '20:30', arrival: '04:00', seats: 48, status: 'Scheduled' },
+		{ id: 'TR-4030', routeId: 'RT-092', vehicleId: 'VH-1161', driverId: 'DR-211', date: '2026-10-08', departure: '06:15', arrival: '07:40', seats: 12, status: 'Scheduled', serviceType: 'COMMUTER' },
+		{ id: 'TR-4031', routeId: 'RT-093', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2026-10-08', departure: '06:20', arrival: '07:30', seats: 28, status: 'Scheduled', serviceType: 'COMMUTER' },
+		{ id: 'TR-ST-001', routeId: 'RT-ST-001', vehicleId: 'VH-1161', driverId: 'DR-211', date: '2026-10-08', departure: '07:00', arrival: '08:10', seats: 12, status: 'Scheduled', serviceType: 'STAFF', companyId: 'CO-001', companyName: 'LankaTech Solutions' },
+		{ id: 'TR-ST-002', routeId: 'RT-ST-002', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2026-10-08', departure: '06:30', arrival: '07:50', seats: 28, status: 'Scheduled', serviceType: 'STAFF', companyId: 'CO-002', companyName: 'Ceylon Finance Group' },
 	],
 	passengers: [
 		{ id: 'PS-5831', name: 'Ishara de Silva', email: 'ishara.ds@email.com', phone: '+94 77 851 2093', city: 'Colombo', joined: '2025-07-12', trips: 12 },
@@ -73,6 +96,8 @@ export const initialData = {
 		{ id: 'AN-102', title: 'Service update: Colombo Fort', audience: 'Colombo routes', date: '2026-10-12', status: 'Scheduled', message: 'Please allow extra time for boarding due to station works.' },
 	],
 	issueReports: [],
+	customTripRequests: [],
+	staffBookings: [],
 }
 
 export const entityConfig = {

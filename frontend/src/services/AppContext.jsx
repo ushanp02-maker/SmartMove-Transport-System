@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { initialData } from '../data/mockData'
 import { DataContext } from './DataContext'
+import { dataMode } from './apiClient'
 
 const STORAGE_KEY = 'smartmove-admin-demo-v1'
 const SESSION_KEY = 'smartmove-demo-session-v1'
@@ -28,7 +29,30 @@ function normalizeAccounts(data) {
   appendLegacy(data.admins, 'ADMIN', 'USR-ADMIN', profile => profile.username || profile.email?.split('@')[0] || profile.id.toLowerCase())
   const superAdmin = users.find(user => user.role === 'SUPER_ADMIN')
   if (!superAdmin) users.unshift({ userId: 'USR-ADMIN-001', username: 'superadmin', email: 'admin@smartmove.lk', role: 'SUPER_ADMIN', accountStatus: 'ACTIVE', linkedProfileId: 'ADM-001' })
-  return { ...data, users }
+  const merged = { ...data, users }
+  const appendMissing = (collection, seeds) => {
+    const rows = [...(merged[collection] || [])]
+    for (const seed of seeds || []) if (!rows.some(item => item.id === seed.id)) rows.push(seed)
+    merged[collection] = rows
+  }
+  appendMissing('companies', initialData.companies)
+  appendMissing('employees', initialData.employees)
+  appendMissing('staffRoutes', initialData.staffRoutes)
+  appendMissing('trips', initialData.trips.filter(trip => ['TR-4030', 'TR-4031', 'TR-ST-001', 'TR-ST-002'].includes(trip.id)))
+  appendMissing('routes', initialData.routes.filter(route => ['RT-092', 'RT-093'].includes(route.id)))
+  merged.trips = merged.trips.map(trip => ({ serviceType: 'COMMUTER', ...trip }))
+  merged.routes = merged.routes.map(route => {
+    const seed = initialData.routes.find(item => item.id === route.id)
+    return { serviceType: 'COMMUTER', ...route, stops: route.stops?.length ? route.stops : seed?.stops || [] }
+  })
+  merged.staffRoutes = merged.staffRoutes.map(route => {
+    const seed = initialData.staffRoutes.find(item => item.id === route.id)
+    return { serviceType: 'STAFF', ...seed, ...route, stops: route.stops?.length ? route.stops : seed?.stops || [] }
+  })
+  merged.staffBookings ||= []
+  merged.customTripRequests ||= []
+  merged.issueReports ||= []
+  return merged
 }
 
 export function DataProvider({ children }) {
@@ -87,6 +111,8 @@ export function DataProvider({ children }) {
 
   const api = useMemo(() => ({
     data,
+    dataMode,
+    integrationNotice: dataMode === 'API' ? 'API mode is configured, but domain endpoints are not connected; these modules still use demo records.' : 'Demo data is stored in this browser only.',
     session,
     currentUser: data.users.find(user => user.userId === session?.accountId) || data.users.find(user => user.linkedProfileId === session?.userId) || null,
     demoAuthenticate: (identity, demoAcknowledged) => {

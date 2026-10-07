@@ -1,37 +1,19 @@
-/**
- * SmartMove API integration placeholder.
- *
- * Demo modules currently read/write browser localStorage through AppContext.
- * Replace these examples with fetch/HTTP client calls when a Spring Boot API
- * is available. No backend persistence, authentication, or payment processing
- * is implemented in this frontend demo.
- * See frontend/PORTAL_BACKEND_NOTES.md for the planned REST contract.
- * TODO: wire API calls, loading/error handling, and DTO validation here.
- * TODO: backend must hash/verify passwords, issue/manage sessions or JWTs, and
- * enforce role/ownership permissions; browser demo roles are not a boundary.
- * TODO: provision the first SUPER_ADMIN through a controlled, environment-
- * managed backend bootstrap. Never enable public SUPER_ADMIN registration.
- */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+/** Spring Boot integration facade. DEMO is the default and no API is connected. */
+export { request as apiRequest, isApiMode, dataMode } from './apiClient'
 
-export async function apiRequest(path, options = {}) {
-	const response = await fetch(`${API_BASE_URL}${path}`, {
-		headers: { 'Content-Type': 'application/json', ...options.headers },
-		...options,
-	})
-	if (!response.ok) throw new Error(`API request failed (${response.status})`)
-	if (response.status === 204) return null
-	return response.json()
-}
-
-export const apiIntegrationStatus = 'placeholder — not connected to a backend'
+export const apiIntegrationStatus = 'placeholder — no Spring Boot, Oracle, MongoDB, or payment service is connected'
 
 export const plannedEndpoints = {
-	auth: ['/auth/login', '/auth/passengers/register', '/auth/logout', '/auth/me'],
-	trips: ['/trips', '/trips/{tripId}'],
+	auth: ['/auth/login', '/auth/register', '/auth/logout', '/auth/me'],
+	routes: ['/routes', '/routes/search', '/routes/{id}/stops', '/stops/nearby'],
+	trips: ['/trips', '/trips/{id}', '/bookings'],
 	passenger: ['/passengers/me/profile', '/passengers/me/bookings', '/passengers/me/payments', '/passengers/me/reviews'],
-	bookings: ['/bookings', '/bookings/{bookingId}/ticket', '/bookings/{bookingId}/cancel'],
+	bookings: ['/bookings', '/bookings/{bookingId}/ticket', '/bookings/{bookingId}/cancel', '/passengers/me/bookings'],
+	staff: ['/staff/routes', '/staff/trips', '/staff/bookings'],
+	customTrips: ['/custom-trips', '/custom-trips/my', '/admin/custom-trips', '/admin/custom-trips/{id}/status', '/admin/custom-trips/{id}/assign'],
 	driver: ['/drivers/me/trips', '/drivers/me/vehicle', '/drivers/me/profile', '/driver/trips/{tripId}/status', '/driver/issues'],
+	tracking: ['/trips/{id}/location', '/admin/fleet/locations', 'WS /trips/{id}/locations'],
+	adminStaff: ['/admin/staff/routes', '/admin/staff/routes/{id}', '/admin/staff/employees/{id}/eligibility'],
 	adminDrivers: ['/admin/drivers', '/admin/drivers/{id}', '/admin/drivers/{id}/account-status'],
 	superAdminAccounts: ['/admin/accounts', '/admin/accounts/{id}', '/admin/accounts/{id}/status'],
 	announcements: ['/announcements?audience={role}'],

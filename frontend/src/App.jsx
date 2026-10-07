@@ -7,9 +7,8 @@ import { PortalShell } from './components/portal/PortalShell'
 import { BusFront, ShieldCheck } from 'lucide-react'
 import { DataProvider } from './services/AppContext'
 import { useAppData } from './services/useAppData'
-import { PassengerDashboard, SearchTrips, PassengerTripDetails, BookTicket, MyBookings, MyTickets, PassengerPayments, PassengerReviews, PassengerAnnouncements, PassengerProfile } from './pages/portal/PassengerPortal'
-import { DriverDashboard, DriverTrips, DriverTripDetails, DriverSchedule, DriverVehicle, DriverStatusPage, DriverIssues, DriverAnnouncements, DriverProfile } from './pages/portal/DriverPortal'
 import './App.css'
+import './components/TransportServices.css'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Vehicles = lazy(() => import('./pages/Vehicles'))
@@ -24,13 +23,38 @@ const Reviews = lazy(() => import('./pages/Reviews'))
 const Announcements = lazy(() => import('./pages/Announcements'))
 const Reports = lazy(() => import('./pages/Reports'))
 const AdminManagement = lazy(() => import('./components/AccountManagement'))
+const CustomTripRequestsAdmin = lazy(() => import('./pages/admin/CustomTripRequests'))
+const StaffTransportAdmin = lazy(() => import('./pages/admin/StaffTransport'))
+const LiveFleet = lazy(() => import('./pages/admin/LiveFleet'))
+const PassengerDashboard = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerDashboard })))
+const SearchTrips = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.SearchTrips })))
+const BookTicket = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.BookTicket })))
+const MyBookings = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.MyBookings })))
+const MyTickets = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.MyTickets })))
+const PassengerPayments = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerPayments })))
+const PassengerReviews = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerReviews })))
+const PassengerAnnouncements = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerAnnouncements })))
+const PassengerProfile = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerProfile })))
+const DriverDashboard = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverDashboard })))
+const DriverTrips = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverTrips })))
+const DriverTripDetails = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverTripDetails })))
+const DriverSchedule = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverSchedule })))
+const DriverVehicle = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverVehicle })))
+const DriverStatusPage = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverStatusPage })))
+const DriverIssues = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverIssues })))
+const DriverAnnouncements = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverAnnouncements })))
+const DriverProfile = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverProfile })))
+const CustomTripRequests = lazy(() => import('./pages/portal/TransportServices').then(module => ({ default: module.CustomTripRequests })))
+const PassengerTripTracking = lazy(() => import('./pages/portal/TransportServices').then(module => ({ default: module.PassengerTripTracking })))
+const TripDetailsPage = lazy(() => import('./pages/portal/TripDetailsPage'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 
 function AdminShell() {
   const [menuOpen, setMenuOpen] = useState(false)
-  return <div className="app-shell"><Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} /><div className="app-main"><Navbar onMenu={() => setMenuOpen(true)} /><main className="main-content"><Suspense fallback={<div className="page-loading">Loading workspace…</div>}><Outlet/></Suspense></main><footer className="app-footer"><span>© 2026 SmartMove Transport Solutions</span><span>Operations console <i /> Demo environment</span></footer></div></div>
+  const { dataMode } = useAppData()
+  return <div className="app-shell"><Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} /><div className="app-main"><Navbar onMenu={() => setMenuOpen(true)} /><main className="main-content"><Suspense fallback={<div className="page-loading">Loading workspace…</div>}><Outlet/></Suspense></main><footer className="app-footer"><span>© 2026 SmartMove Transport Solutions</span><span>Operations console <i />{dataMode==='API'?'API not connected · Demo data':'Local demo environment'}</span></footer></div></div>
 }
 
 function GuardedPortal({ role, children, superAdminOnly = false }) {
@@ -61,11 +85,14 @@ function AppRoutes() {
     <Route path="/login" element={<Login/>}/>
     <Route path="/register" element={<Register/>}/>
     <Route path="/passenger/search" element={<PassengerSearchEntry/>}/>
-    <Route path="/passenger/trip/:tripId" element={<PublicTravelPage><PassengerTripDetails/></PublicTravelPage>}/>
+    <Route path="/passenger/trip/:tripId" element={<PublicTravelPage><TripDetailsPage/></PublicTravelPage>}/>
     <Route path="/passenger/book/:tripId" element={<PassengerBookEntry/>}/>
     <Route path="/passenger" element={<GuardedPortal role="passenger"><PortalShell role="passenger"/></GuardedPortal>}>
       <Route index element={<PassengerDashboard/>}/>
       <Route path="bookings" element={<MyBookings/>}/>
+      <Route path="custom-trips" element={<CustomTripRequests/>}/>
+      <Route path="tracking" element={<PassengerTripTracking/>}/>
+      <Route path="tracking/:tripId" element={<PassengerTripTracking/>}/>
       <Route path="tickets" element={<MyTickets/>}/>
       <Route path="payments" element={<PassengerPayments/>}/>
       <Route path="reviews" element={<PassengerReviews/>}/>
@@ -84,7 +111,7 @@ function AppRoutes() {
       <Route path="profile" element={<DriverProfile/>}/>
     </Route>
     <Route path="/admin" element={<GuardedPortal role="admin"><AdminShell/></GuardedPortal>}>
-      <Route index element={<Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="reports" element={<Reports/>}/><Route path="admin-management" element={<GuardedPortal role="admin" superAdminOnly><AdminManagement kind="ADMIN"/></GuardedPortal>}/>
+      <Route index element={<Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="reports" element={<Reports/>}/><Route path="custom-trip-requests" element={<CustomTripRequestsAdmin/>}/><Route path="staff-transport" element={<StaffTransportAdmin/>}/><Route path="live-fleet" element={<LiveFleet/>}/><Route path="admin-management" element={<GuardedPortal role="admin" superAdminOnly><AdminManagement kind="ADMIN"/></GuardedPortal>}/>
     </Route>
     {['vehicles','drivers','routes','trips','passengers','bookings','payments','maintenance','reviews','announcements','reports'].map(path=><Route key={path} path={`/${path}`} element={<Navigate to={`/admin/${path}`} replace/>}/>)}
     <Route path="*" element={<Navigate to="/" replace/>}/>
