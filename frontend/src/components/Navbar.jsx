@@ -1,7 +1,7 @@
 import { Bell, Menu, Search, ChevronDown } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 
-const titles = { '/': 'Dashboard', '/vehicles': 'Vehicles', '/drivers': 'Drivers', '/routes': 'Routes', '/trips': 'Trips', '/passengers': 'Passengers', '/bookings': 'Bookings', '/payments': 'Payments', '/maintenance': 'Maintenance', '/reviews': 'Reviews', '/announcements': 'Announcements', '/reports': 'Reports' }
+const titles = { '/admin': 'Dashboard', '/admin/vehicles': 'Vehicles', '/admin/drivers': 'Drivers', '/admin/routes': 'Routes', '/admin/trips': 'Trips', '/admin/passengers': 'Passengers', '/admin/bookings': 'Bookings', '/admin/payments': 'Payments', '/admin/maintenance': 'Maintenance', '/admin/reviews': 'Reviews', '/admin/announcements': 'Announcements', '/admin/reports': 'Reports' }
 export default function Navbar({ onMenu }) {
   const location = useLocation()
   const title = titles[location.pathname] || 'Dashboard'

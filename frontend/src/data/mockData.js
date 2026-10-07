@@ -18,13 +18,16 @@ export const initialData = {
 		{ id: 'RT-052', name: 'Kandy → Nuwara Eliya', origin: 'Kandy', destination: 'Nuwara Eliya', distance: 77, duration: '2h 45m', fare: 1400, status: 'Active' },
 		{ id: 'RT-067', name: 'Colombo → Jaffna', origin: 'Colombo', destination: 'Jaffna', distance: 398, duration: '7h 30m', fare: 4200, status: 'Active' },
 		{ id: 'RT-073', name: 'Colombo → Negombo', origin: 'Colombo', destination: 'Negombo', distance: 37, duration: '1h 10m', fare: 850, status: 'Active' },
+		{ id: 'RT-081', name: 'Colombo → Ella', origin: 'Colombo', destination: 'Ella', distance: 205, duration: '5h 15m', fare: 2750, status: 'Active' },
 	],
 	trips: [
-		{ id: 'TR-4021', routeId: 'RT-031', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2025-10-24', departure: '07:30', arrival: '10:45', seats: 28, status: 'Scheduled' },
-		{ id: 'TR-4022', routeId: 'RT-044', vehicleId: 'VH-1088', driverId: 'DR-204', date: '2025-10-24', departure: '08:00', arrival: '10:30', seats: 42, status: 'In progress' },
-		{ id: 'TR-4023', routeId: 'RT-052', vehicleId: 'VH-1161', driverId: 'DR-211', date: '2025-10-24', departure: '09:15', arrival: '12:00', seats: 12, status: 'Scheduled' },
-		{ id: 'TR-4018', routeId: 'RT-067', vehicleId: 'VH-1194', driverId: 'DR-208', date: '2025-10-23', departure: '21:00', arrival: '04:30', seats: 48, status: 'Completed' },
-		{ id: 'TR-4024', routeId: 'RT-073', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2025-10-25', departure: '06:45', arrival: '07:55', seats: 28, status: 'Scheduled' },
+		{ id: 'TR-4021', routeId: 'RT-031', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2026-10-07', departure: '07:30', arrival: '10:45', seats: 28, status: 'Scheduled' },
+		{ id: 'TR-4022', routeId: 'RT-044', vehicleId: 'VH-1088', driverId: 'DR-204', date: '2026-10-08', departure: '08:00', arrival: '10:30', seats: 42, status: 'Scheduled' },
+		{ id: 'TR-4023', routeId: 'RT-052', vehicleId: 'VH-1161', driverId: 'DR-211', date: '2026-10-09', departure: '09:15', arrival: '12:00', seats: 12, status: 'Scheduled' },
+		{ id: 'TR-4018', routeId: 'RT-067', vehicleId: 'VH-1194', driverId: 'DR-208', date: '2026-10-06', departure: '21:00', arrival: '04:30', seats: 48, status: 'Completed' },
+		{ id: 'TR-4024', routeId: 'RT-073', vehicleId: 'VH-1042', driverId: 'DR-201', date: '2026-10-10', departure: '06:45', arrival: '07:55', seats: 28, status: 'Scheduled' },
+		{ id: 'TR-4025', routeId: 'RT-081', vehicleId: 'VH-1161', driverId: 'DR-211', date: '2026-10-11', departure: '06:30', arrival: '11:45', seats: 12, status: 'Scheduled' },
+		{ id: 'TR-4026', routeId: 'RT-067', vehicleId: 'VH-1194', driverId: 'DR-204', date: '2026-10-12', departure: '20:30', arrival: '04:00', seats: 48, status: 'Scheduled' },
 	],
 	passengers: [
 		{ id: 'PS-5831', name: 'Ishara de Silva', email: 'ishara.ds@email.com', phone: '+94 77 851 2093', city: 'Colombo', joined: '2025-07-12', trips: 12 },
@@ -34,17 +37,18 @@ export const initialData = {
 		{ id: 'PS-5835', name: 'Tharushi Gunasekara', email: 'tharushi.g@email.com', phone: '+94 77 673 1490', city: 'Colombo', joined: '2025-09-19', trips: 7 },
 	],
 	bookings: [
-		{ id: 'BK-9081', tripId: 'TR-4021', passengerId: 'PS-5831', bookedAt: '2025-10-21', seats: 2, amount: 3700, status: 'Confirmed' },
-		{ id: 'BK-9082', tripId: 'TR-4022', passengerId: 'PS-5832', bookedAt: '2025-10-21', seats: 1, amount: 1600, status: 'Confirmed' },
-		{ id: 'BK-9083', tripId: 'TR-4023', passengerId: 'PS-5833', bookedAt: '2025-10-22', seats: 2, amount: 2800, status: 'Pending' },
-		{ id: 'BK-9084', tripId: 'TR-4021', passengerId: 'PS-5835', bookedAt: '2025-10-22', seats: 1, amount: 1850, status: 'Confirmed' },
-		{ id: 'BK-9085', tripId: 'TR-4024', passengerId: 'PS-5834', bookedAt: '2025-10-23', seats: 3, amount: 2550, status: 'Cancelled' },
+		{ id: 'BK-9081', tripId: 'TR-4021', passengerId: 'PS-5831', bookedAt: '2026-10-01', seats: 2, amount: 3700, status: 'Confirmed' },
+		{ id: 'BK-9082', tripId: 'TR-4022', passengerId: 'PS-5832', bookedAt: '2026-10-02', seats: 1, amount: 1600, status: 'Confirmed' },
+		{ id: 'BK-9083', tripId: 'TR-4023', passengerId: 'PS-5833', bookedAt: '2026-10-03', seats: 2, amount: 2800, status: 'Pending' },
+		{ id: 'BK-9084', tripId: 'TR-4021', passengerId: 'PS-5835', bookedAt: '2026-10-04', seats: 1, amount: 1850, status: 'Confirmed' },
+		{ id: 'BK-9085', tripId: 'TR-4024', passengerId: 'PS-5834', bookedAt: '2026-10-05', seats: 3, amount: 2550, status: 'Cancelled' },
+		{ id: 'BK-9086', tripId: 'TR-4018', passengerId: 'PS-5832', bookedAt: '2026-10-01', seats: 1, amount: 4200, status: 'Confirmed' },
 	],
 	payments: [
-		{ id: 'PY-6112', bookingId: 'BK-9081', date: '2025-10-21', amount: 3700, method: 'Card', status: 'Paid', reference: 'SM-9A81K' },
-		{ id: 'PY-6113', bookingId: 'BK-9082', date: '2025-10-21', amount: 1600, method: 'Bank transfer', status: 'Paid', reference: 'SM-9A82M' },
-		{ id: 'PY-6114', bookingId: 'BK-9083', date: '2025-10-22', amount: 2800, method: 'Cash', status: 'Pending', reference: 'SM-9A83Q' },
-		{ id: 'PY-6115', bookingId: 'BK-9084', date: '2025-10-22', amount: 1850, method: 'Card', status: 'Paid', reference: 'SM-9A84R' },
+		{ id: 'PY-6112', bookingId: 'BK-9081', date: '2026-10-01', amount: 3700, method: 'Card (demo)', status: 'Paid', reference: 'SM-9A81K' },
+		{ id: 'PY-6113', bookingId: 'BK-9082', date: '2026-10-02', amount: 1600, method: 'Bank transfer (demo)', status: 'Paid', reference: 'SM-9A82M' },
+		{ id: 'PY-6114', bookingId: 'BK-9083', date: '2026-10-03', amount: 2800, method: 'Cash (demo)', status: 'Pending', reference: 'SM-9A83Q' },
+		{ id: 'PY-6115', bookingId: 'BK-9084', date: '2026-10-04', amount: 1850, method: 'Card (demo)', status: 'Paid', reference: 'SM-9A84R' },
 	],
 	maintenance: [
 		{ id: 'MT-301', vehicleId: 'VH-1126', issue: 'Scheduled 50,000 km service', type: 'Service', date: '2025-10-28', cost: 28500, status: 'Scheduled', notes: 'Oil, filters and brake inspection' },
@@ -57,9 +61,10 @@ export const initialData = {
 		{ id: 'RV-703', passengerId: 'PS-5835', tripId: 'TR-4021', rating: 3, date: '2025-10-21', comment: 'Pleasant trip, though boarding was a little slow.', status: 'Needs review' },
 	],
 	announcements: [
-		{ id: 'AN-101', title: 'Extended weekend service to Kandy', audience: 'All passengers', date: '2025-10-23', status: 'Published', message: 'Additional evening departures are available this weekend.' },
-		{ id: 'AN-102', title: 'Service update: Colombo Fort', audience: 'Colombo routes', date: '2025-10-25', status: 'Scheduled', message: 'Please allow extra time for boarding due to station works.' },
+		{ id: 'AN-101', title: 'Extended weekend service to Kandy', audience: 'All passengers', date: '2026-10-06', status: 'Published', message: 'Additional evening departures are available this weekend.' },
+		{ id: 'AN-102', title: 'Service update: Colombo Fort', audience: 'Colombo routes', date: '2026-10-12', status: 'Scheduled', message: 'Please allow extra time for boarding due to station works.' },
 	],
+	issueReports: [],
 }
 
 export const entityConfig = {

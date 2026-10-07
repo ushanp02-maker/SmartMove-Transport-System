@@ -2,13 +2,13 @@ import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, BusFront, Users, Route, Navigation, ContactRound, TicketCheck, Wallet, Wrench, Star, Megaphone, ChartNoAxesCombined, X } from 'lucide-react'
 
 const links = [
-  { label: 'Dashboard', to: '/', icon: LayoutDashboard },
+  { label: 'Dashboard', to: '/admin', icon: LayoutDashboard },
   { label: 'FLEET OPERATIONS', section: true },
-  { label: 'Vehicles', to: '/vehicles', icon: BusFront }, { label: 'Drivers', to: '/drivers', icon: Users }, { label: 'Routes', to: '/routes', icon: Route }, { label: 'Trips', to: '/trips', icon: Navigation },
+  { label: 'Vehicles', to: '/admin/vehicles', icon: BusFront }, { label: 'Drivers', to: '/admin/drivers', icon: Users }, { label: 'Routes', to: '/admin/routes', icon: Route }, { label: 'Trips', to: '/admin/trips', icon: Navigation },
   { label: 'CUSTOMER & SALES', section: true },
-  { label: 'Passengers', to: '/passengers', icon: ContactRound }, { label: 'Bookings', to: '/bookings', icon: TicketCheck }, { label: 'Payments', to: '/payments', icon: Wallet },
+  { label: 'Passengers', to: '/admin/passengers', icon: ContactRound }, { label: 'Bookings', to: '/admin/bookings', icon: TicketCheck }, { label: 'Payments', to: '/admin/payments', icon: Wallet },
   { label: 'SERVICE & INSIGHTS', section: true },
-  { label: 'Maintenance', to: '/maintenance', icon: Wrench }, { label: 'Reviews', to: '/reviews', icon: Star }, { label: 'Announcements', to: '/announcements', icon: Megaphone }, { label: 'Reports', to: '/reports', icon: ChartNoAxesCombined },
+  { label: 'Maintenance', to: '/admin/maintenance', icon: Wrench }, { label: 'Reviews', to: '/admin/reviews', icon: Star }, { label: 'Announcements', to: '/admin/announcements', icon: Megaphone }, { label: 'Reports', to: '/admin/reports', icon: ChartNoAxesCombined },
 ]
 
 export default function Sidebar({ open, onClose }) {
