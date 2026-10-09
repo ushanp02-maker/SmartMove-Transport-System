@@ -21,7 +21,7 @@ export function startTripTracking(tripId, onState, config = TRACKING_CONFIG) {
     }
     try {
       onState?.({ status: 'sending', location })
-      await request(`/trips/${encodeURIComponent(tripId)}/location`, { method: 'POST', body: JSON.stringify(location) })
+      await request('/tracking/location', { method: 'POST', body: JSON.stringify({ tripId: Number(tripId), latitude: location.latitude, longitude: location.longitude, accuracyMeters: location.accuracy, speedKmh: location.speed == null ? null : Math.max(0, location.speed * 3.6), headingDegrees: location.heading, altitudeMeters: location.altitude, moving: location.speed != null ? location.speed > 0 : null }) })
       lastSent = { location, sentAt: Date.now() }
       onState?.({ status: 'active', lastUpdate: location.recordedAt, accuracy: location.accuracy })
     } catch (error) {
@@ -40,21 +40,28 @@ export function startTripTracking(tripId, onState, config = TRACKING_CONFIG) {
 }
 
 export function subscribeToTripLocation(tripId, onLocation, onState) {
-  if (!isApiMode() || !('WebSocket' in window)) {
-    onState?.({ status: 'unavailable', message: 'Live vehicle location is not connected. No simulated positions are displayed.' })
+  let stopped = false
+  let inFlight = false
+  const poll = async () => {
+    if (stopped || inFlight || !isApiMode()) return
+    inFlight = true
+    try {
+      const result = await request(`/tracking/trips/${encodeURIComponent(tripId)}/live`)
+      if (!stopped && result) {
+        const point = result.location ?? result
+        if (Number.isFinite(Number(point.latitude)) && Number.isFinite(Number(point.longitude))) {
+          onLocation?.({ ...point, latitude: Number(point.latitude), longitude: Number(point.longitude) })
+          onState?.({ status: 'active' })
+        } else onState?.({ status: 'unavailable', message: 'No GPS fix received yet.' })
+      }
+    } catch (error) { if (!stopped) onState?.({ status: 'error', message: error.message }) }
+    finally { inFlight = false }
+  }
+  if (!isApiMode()) {
+    onState?.({ status: 'unavailable', message: 'Live tracking requires API mode.' })
     return () => {}
   }
-  const base = import.meta.env.VITE_WS_BASE_URL
-  if (!base) {
-    onState?.({ status: 'unavailable', message: 'VITE_WS_BASE_URL is not configured for live location events.' })
-    return () => {}
-  }
-  const socket = new WebSocket(`${base.replace(/\/$/, '')}/trips/${encodeURIComponent(tripId)}/locations`)
-  socket.onopen = () => onState?.({ status: 'connecting' })
-  socket.onmessage = event => {
-    try { onLocation(JSON.parse(event.data)); onState?.({ status: 'active' }) } catch { onState?.({ status: 'error', message: 'Received an invalid location update.' }) }
-  }
-  socket.onerror = () => onState?.({ status: 'error', message: 'Could not connect to the live location service.' })
-  socket.onclose = () => onState?.({ status: 'offline' })
-  return () => socket.close()
+  poll()
+  const timer = window.setInterval(poll, 15000)
+  return () => { stopped = true; window.clearInterval(timer) }
 }
