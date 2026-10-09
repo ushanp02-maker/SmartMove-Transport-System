@@ -129,7 +129,7 @@ export function ApiBookTicket() {
   if (saved) return <>{title('Booking created', 'Your reservation was saved in Oracle. No payment has been processed.')}<section className="portal-panel"><h2>Reference: {saved.bookingReference}</h2><p>Status: {saved.status}</p><p>{saved.seatCount} seat(s) · {formatLkr(saved.totalFare)}</p><Link className="button button-primary" to={`/passenger/tickets?booking=${saved.id}`}>View booking details</Link></section></>
   const submit = async e => {
     e.preventDefault()
-    if (!currentUser?.backendProfileId && !currentUser?.linkedProfileId) return setError('Please sign in with a passenger account.')
+    if (!currentUser || currentUser.role !== 'PASSENGER') return setError('Please sign in with a passenger account.')
     setSaving(true); setError('')
     try {
       const passenger = await request('/users/me/passenger')
@@ -180,7 +180,7 @@ export function ApiMyBookings() {
       <div className="booking-record-list">{items.map(b => <article className="booking-record" key={b.id}>
         <div className="booking-record-main"><span className="booking-reference">{b.bookingReference} · {b.status}</span><strong>{journey(b)}</strong><span>{dateOf(b.departureTime)} · {timeOf(b.departureTime)} · {b.seatCount} seat(s)</span></div>
         <div className="booking-record-side"><strong>{formatLkr(b.totalFare)}</strong><Link to={`/passenger/tickets?booking=${b.id}`}>View ticket</Link>
-          {['PENDING','CONFIRMED'].includes(String(b.status).toUpperCase()) && <button type="button" disabled={cancelling === b.id} onClick={() => cancel(b)}>Cancel booking</button>}
+          {String(b.status).toUpperCase() === 'PENDING' && <button type="button" disabled={cancelling === b.id} onClick={() => cancel(b)}>Cancel booking</button>}
         </div>
       </article>)}</div>}
     {actionError && <p className="auth-error" role="alert">{actionError}</p>}
