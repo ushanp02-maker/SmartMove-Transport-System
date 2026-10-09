@@ -38,7 +38,7 @@ export default function ApiAccounts({ kind }) {
   return <div className="page-content"><div className="page-heading"><div><h1>{driver?'Driver accounts':'Administrator accounts'}</h1><p>Secure account provisioning and access management backed by Oracle.</p></div></div>
     {error&&<p className="auth-error" role="alert">{error}</p>}{notice&&<p role="status">{notice}</p>}
     <section className="portal-panel"><h2>Create {driver?'driver login':'administrator account'}</h2>
-      {driver&&<p>Create the driver profile first through your backend driver-management workflow. Enter its numeric ID here to link the login.</p>}
+      {driver&&<p>Create a driver profile first, then enter its ID to link the account. Enter its numeric ID here to link the login.</p>}
       <form className="form-grid" onSubmit={submit}>
         {driver&&<label>Existing driver ID<input type="number" min="1" name="driverId" value={form.driverId} onChange={update} required/></label>}
         <label>Username<input name="username" value={form.username} onChange={update} required minLength="3"/></label>
