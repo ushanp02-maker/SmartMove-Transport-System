@@ -35,6 +35,7 @@ const ApiPassengerTripDetails = lazy(() => import('./pages/portal/ApiPassengerJo
 const ApiBookTicket = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiBookTicket})))
 const ApiMyBookings = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiMyBookings})))
 const ApiMyTickets = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiMyTickets})))
+const ApiPassengerDashboard = lazy(() => import('./pages/portal/ApiPassengerDashboard'))
 const PassengerDashboard = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerDashboard })))
 const SearchTrips = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.SearchTrips })))
 const BookTicket = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.BookTicket })))
@@ -111,7 +112,7 @@ function AppRoutes() {
     <Route path="/passenger/trip/:tripId" element={<PublicTravelPage>{isApiMode() ? <ApiPassengerTripDetails/> : <TripDetailsPage/>}</PublicTravelPage>}/>
     <Route path="/passenger/book/:tripId" element={<PassengerBookEntry/>}/>
     <Route path="/passenger" element={<GuardedPortal role="passenger"><PortalShell role="passenger"/></GuardedPortal>}>
-      <Route index element={<PassengerDashboard/>}/>
+      <Route index element={isApiMode() ? <ApiPassengerDashboard/> : <PassengerDashboard/>}/>
       <Route path="bookings" element={isApiMode() ? <ApiMyBookings/> : <MyBookings/>}/>
       <Route path="custom-trips" element={isApiMode() ? <ApiCustomTripRequests/> : <CustomTripRequests/>}/>
       <Route path="staff-transport" element={isApiMode() ? <ApiStaffTransport/> : <CustomTripRequests/>}/>
