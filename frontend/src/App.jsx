@@ -40,6 +40,8 @@ const BookTicket = lazy(() => import('./pages/portal/PassengerPortal').then(modu
 const MyBookings = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.MyBookings })))
 const MyTickets = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.MyTickets })))
 const PassengerPayments = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerPayments })))
+const ApiPassengerReviews = lazy(() => import('./pages/portal/ApiPassengerExtras').then(m => ({default:m.ApiPassengerReviews})))
+const ApiPassengerAnnouncements = lazy(() => import('./pages/portal/ApiPassengerExtras').then(m => ({default:m.ApiPassengerAnnouncements})))
 const PassengerReviews = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerReviews })))
 const PassengerAnnouncements = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerAnnouncements })))
 const PassengerProfile = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerProfile })))
@@ -107,8 +109,8 @@ function AppRoutes() {
       <Route path="tracking/:tripId" element={<PassengerTripTracking/>}/>
       <Route path="tickets" element={isApiMode() ? <ApiMyTickets/> : <MyTickets/>}/>
       <Route path="payments" element={<PassengerPayments/>}/>
-      <Route path="reviews" element={<PassengerReviews/>}/>
-      <Route path="announcements" element={<PassengerAnnouncements/>}/>
+      <Route path="reviews" element={isApiMode() ? <ApiPassengerReviews/> : <PassengerReviews/>}/>
+      <Route path="announcements" element={isApiMode() ? <ApiPassengerAnnouncements/> : <PassengerAnnouncements/>}/>
       <Route path="profile" element={<PassengerProfile/>}/>
     </Route>
     <Route path="/driver" element={<GuardedPortal role="driver"><PortalShell role="driver"/></GuardedPortal>}>
