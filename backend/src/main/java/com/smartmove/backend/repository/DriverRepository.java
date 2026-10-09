@@ -2,6 +2,7 @@
 package com.smartmove.backend.repository;
 
 import com.smartmove.backend.entity.Driver;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,19 +13,56 @@ import java.util.Optional;
 public interface DriverRepository
         extends JpaRepository<Driver, Long> {
 
-    Optional<Driver> findByEmailIgnoreCase(String email);
+    // ==========================================
+    // DRIVER LOOKUP
+    // ==========================================
 
-    Optional<Driver> findByLicenseNumber(String licenseNumber);
+    Optional<Driver> findByEmailIgnoreCase(
+            String email
+    );
 
-    boolean existsByEmailIgnoreCase(String email);
+    Optional<Driver> findByLicenseNumber(
+            String licenseNumber
+    );
 
-    boolean existsByLicenseNumber(String licenseNumber);
+    // ==========================================
+    // DUPLICATE VALIDATION
+    // ==========================================
 
-    List<Driver> findByStatusIgnoreCase(String status);
+    boolean existsByEmailIgnoreCase(
+            String email
+    );
+
+    boolean existsByLicenseNumber(
+            String licenseNumber
+    );
+
+    // Used by DriverService.java
+    boolean existsByLicenseNumberIgnoreCase(
+            String licenseNumber
+    );
+
+    // ==========================================
+    // DRIVER STATUS
+    // ==========================================
+
+    List<Driver> findByStatusIgnoreCase(
+            String status
+    );
+
+    // ==========================================
+    // DRIVER EXPERIENCE
+    // ==========================================
 
     List<Driver> findByExperienceYearsGreaterThanEqual(
             Integer years
     );
 
-    List<Driver> findByNameContainingIgnoreCase(String name);
+    // ==========================================
+    // DRIVER SEARCH
+    // ==========================================
+
+    List<Driver> findByNameContainingIgnoreCase(
+            String name
+    );
 }
