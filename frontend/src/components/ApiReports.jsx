@@ -13,9 +13,8 @@ export default function ApiReports() {
   const [loading,setLoading] = useState(false)
   const [refresh,setRefresh] = useState(0)
   useEffect(() => {
-    if (dated.has(type) && (!start || !end || start > end)) { setError('Choose a valid date range.'); return }
+    if (dated.has(type) && (!start || !end || start > end)) return
     let live = true
-    setLoading(true); setError('')
     const query = dated.has(type) ? `?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}` : ''
     request(`/reports/${type}${query}`).then(value => { if (live) setData(value) }).catch(err => { if (live) {setData(null);setError(err.message)} }).finally(() => { if (live) setLoading(false) })
     return () => { live = false }
@@ -31,6 +30,6 @@ export default function ApiReports() {
   }
   return <section className="portal-panel"><div className="portal-panel-head"><div><h1>Operations reports</h1><p>Actual figures returned by the Spring Boot reporting service, not illustrative demo metrics.</p></div><div style={{display:'flex',gap:8}}><button className="button button-outline" onClick={() => setRefresh(n=>n+1)}>Refresh</button><button className="button button-primary" onClick={exportCsv} disabled={!rows.length}>Export CSV</button></div></div>
     <div className="form-grid"><label>Report<select value={type} onChange={e => setType(e.target.value)}>{reportTypes.map(([value,label]) => <option value={value} key={value}>{label}</option>)}</select></label>{dated.has(type)&&<><label>Start date<input type="date" value={start} onChange={e => setStart(e.target.value)}/></label><label>End date<input type="date" value={end} onChange={e => setEnd(e.target.value)}/></label></>}</div>
-    {error && <p className="auth-error" role="alert">{error}</p>}{loading ? <p>Loading live report...</p> : !rows.length ? <p>No report records.</p> : <div style={{overflowX:'auto'}}><table className="data-table"><thead><tr>{keys.map(key => <th key={key}>{key}</th>)}</tr></thead><tbody>{rows.map((row,i) => <tr key={i}>{keys.map(key => <td key={key}>{display(row[key])}</td>)}</tr>)}</tbody></table></div>}
+    {(dated.has(type) && (!start || !end || start > end) ? 'Choose a valid date range.' : error) && <p className="auth-error" role="alert">{dated.has(type) && (!start || !end || start > end) ? 'Choose a valid date range.' : error}</p>}{loading ? <p>Loading live report...</p> : !rows.length ? <p>No report records.</p> : <div style={{overflowX:'auto'}}><table className="data-table"><thead><tr>{keys.map(key => <th key={key}>{key}</th>)}</tr></thead><tbody>{rows.map((row,i) => <tr key={i}>{keys.map(key => <td key={key}>{display(row[key])}</td>)}</tr>)}</tbody></table></div>}
   </section>
 }
