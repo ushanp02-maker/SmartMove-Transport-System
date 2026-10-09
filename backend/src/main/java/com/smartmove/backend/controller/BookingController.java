@@ -49,6 +49,7 @@ public class BookingController {
 
     @GetMapping
     public ResponseEntity<List<BookingProfile>> getAllBookings() {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 bookingService.getAllBookings()
         );
@@ -63,6 +64,7 @@ public class BookingController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
+        currentUserService.requireAdmin();
         if (page < 0 || size < 1 || size > 100) {
             throw badRequest(
                     "Page must be nonnegative and size must be between 1 and 100"
@@ -129,6 +131,7 @@ public class BookingController {
 
     @GetMapping("/stats")
     public ResponseEntity<BookingStatistics> getBookingStatistics() {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 bookingService.getBookingStatistics()
         );
@@ -140,6 +143,7 @@ public class BookingController {
 
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> countBookings() {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 Map.of(
                         "totalBookings",
@@ -157,6 +161,7 @@ public class BookingController {
     public ResponseEntity<List<BookingProfile>> getBookingsByStatus(
             @PathVariable @NotBlank String status
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 bookingService.getBookingsByStatus(status)
         );
@@ -202,6 +207,7 @@ public class BookingController {
     public ResponseEntity<List<BookingProfile>> getTripBookings(
             @PathVariable @Positive Long tripId
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 bookingService.getTripBookings(tripId)
         );
