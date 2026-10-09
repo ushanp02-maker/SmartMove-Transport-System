@@ -388,6 +388,7 @@ export function DataProvider({ children }) {
     useState(null)
 
   useEffect(() => {
+    if (isApiMode()) return
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(data)
@@ -457,10 +458,8 @@ export function DataProvider({ children }) {
 
       setApiAccount(account)
 
-      setApiCredentials({
-        usernameOrEmail: identity.trim(),
-        password,
-      })
+      // Never duplicate the password in React context/state.
+      setApiCredentials(null)
 
       setSession({
         accountId: account.userId,
@@ -523,7 +522,7 @@ export function DataProvider({ children }) {
 
     session,
     currentUser,
-    apiCredentials,
+    apiCredentials: isApiMode() ? null : apiCredentials,
 
     authenticate,
     registerRealPassenger,
