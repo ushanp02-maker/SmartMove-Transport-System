@@ -1,6 +1,18 @@
 import { request, isApiMode } from './apiClient'
 
-export const listTrips = params => isApiMode() ? request(`/trips?${new URLSearchParams(params || {})}`) : Promise.resolve({ mode: 'DEMO', items: [] })
-export const getTrip = id => isApiMode() ? request(`/trips/${encodeURIComponent(id)}`) : Promise.resolve({ mode: 'DEMO', item: null })
-export const startAssignedTrip = id => isApiMode() ? request(`/driver/trips/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'IN_PROGRESS' }) }) : Promise.resolve({ mode: 'DEMO', status: 'IN_PROGRESS' })
-export const endAssignedTrip = id => isApiMode() ? request(`/driver/trips/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'COMPLETED' }) }) : Promise.resolve({ mode: 'DEMO', status: 'COMPLETED' })
+const demo = () => Promise.resolve({ mode: 'DEMO', items: [] })
+
+export const listTrips = () => isApiMode() ? request('/trips') : demo()
+export const listUpcomingTrips = () => isApiMode() ? request('/trips/upcoming') : demo()
+export const listUpcomingTripsByRoute = routeId =>
+  isApiMode() ? request(`/trips/route/${encodeURIComponent(routeId)}/upcoming`) : demo()
+export const getTrip = id =>
+  isApiMode() ? request(`/trips/${encodeURIComponent(id)}`) : demo()
+export const startAssignedTrip = id =>
+  isApiMode() ? request(`/trips/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'IN_PROGRESS' }),
+  }) : demo()
+export const endAssignedTrip = id =>
+  isApiMode() ? request(`/trips/${encodeURIComponent(id)}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'COMPLETED' }),
+  }) : demo()
