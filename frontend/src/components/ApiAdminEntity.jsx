@@ -51,11 +51,23 @@ export default function ApiAdminEntity({ entity }) {
     } catch (err) { setActionError(errorText(err)) }
     finally { setSaving(false) }
   }
+  const paymentAction = async (record, action) => {
+    const id = record.id
+    let body
+    if (action === 'fail') { const reason = window.prompt('Reason for payment failure'); if (reason === null) return; body = { reason } }
+    if (action === 'refund') { const amount = window.prompt('Refund amount in LKR'); if (!amount) return; if (!(Number(amount) > 0)) return setActionError('Enter a positive refund amount.'); const reason = window.prompt('Refund reason') ; if (reason === null) return; body = { amount: Number(amount), reason } }
+    if (action === 'complete' && !window.confirm('Mark this payment as completed? No payment gateway is involved.')) return
+    setSaving(true); setActionError('')
+    try { await request(`/payments/${encodeURIComponent(id)}/${action}`, { method: 'PATCH', ...(body ? { body: JSON.stringify(body) } : {}) }); setLoading(true); setVersion(n => n + 1) }
+    catch (err) { setActionError(errorText(err)) }
+    finally { setSaving(false) }
+  }
   if (!config) return <p>Unknown admin module.</p>
   return <section className="portal-panel">
     <div className="portal-panel-head"><div><h1>{config.title}</h1><p>Records loaded directly from the Spring Boot and Oracle API.</p></div><button type="button" className="button button-primary" onClick={() => open(null)}>Add record</button></div>
+    {actionError && !editing && <p className="auth-error" role="alert">{actionError}</p>}
     {loading ? <p>Loading records...</p> : error ? <p className="auth-error" role="alert">{error} <button type="button" onClick={() => {setLoading(true);setVersion(n=>n+1)}}>Retry</button></p> : items.length === 0 ? <p>No records in the database.</p> :
-      <div style={{ overflowX: 'auto' }}><table className="data-table"><thead><tr><th>ID</th>{config.fields.slice(0,5).map(([key,title]) => <th key={key}>{title}</th>)}<th>Actions</th></tr></thead><tbody>{items.map(record => <tr key={record.id}><td>{record.id}</td>{config.fields.slice(0,5).map(([key]) => <td key={key}>{pretty(record[key])}</td>)}<td>{!config.createOnly && <button className="button button-outline" type="button" onClick={() => open(record)}>Edit</button>}</td></tr>)}</tbody></table></div>}
+      <div style={{ overflowX: 'auto' }}><table className="data-table"><thead><tr><th>ID</th>{config.fields.slice(0,5).map(([key,title]) => <th key={key}>{title}</th>)}<th>Actions</th></tr></thead><tbody>{items.map(record => <tr key={record.id}><td>{record.id}</td>{config.fields.slice(0,5).map(([key]) => <td key={key}>{pretty(record[key])}</td>)}<td>{!config.createOnly && <button className="button button-outline" type="button" onClick={() => open(record)}>Edit</button>}{entity === 'payments' && ['complete','fail','refund'].map(action => <button key={action} className="button button-outline" type="button" disabled={saving} onClick={() => paymentAction(record, action)}>{action}</button>)}</td></tr>)}</tbody></table></div>}
     {editing && <div className="modal-backdrop"><section className="record-modal" role="dialog" aria-modal="true" aria-label="Manage database record">
       <div className="modal-heading"><h2>{editing.id == null ? 'Create' : 'Update'} {entity}</h2><button className="button button-outline" onClick={() => setEditing(null)}>Close</button></div>
       <form onSubmit={submit}><div className="form-grid">{config.fields.filter(([key]) => editing.id == null || !config.updateFields || config.updateFields.includes(key)).map(([key,title,type]) =>
