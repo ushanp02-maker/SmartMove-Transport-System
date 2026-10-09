@@ -1,3 +1,5 @@
+import { isApiMode } from '../../services/apiClient'
+import { ApiSearchTrips, ApiPassengerTripDetails, ApiBookTicket, ApiMyBookings, ApiMyTickets } from './ApiPassengerJourneys'
 import { useMemo, useState } from 'react'
 
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -66,7 +68,7 @@ function Sparkle(){return <span className="sparkle-small">✦</span>}
 
 
 
-export function SearchTrips() {
+function DemoSearchTrips() {
 
   const {data,session,currentUser,addRecord}=useAppData()
 
@@ -158,7 +160,7 @@ export function SearchTrips() {
 
 
 
-export function PassengerTripDetails() {
+function DemoPassengerTripDetails() {
   const { tripId } = useParams()
   const [params] = useSearchParams()
   const { data } = useAppData()
@@ -188,7 +190,7 @@ export function PassengerTripDetails() {
 
 function ArrowLeftIcon() { return <span>←</span> }
 
-export function BookTicket() {
+function DemoBookTicket() {
   const { tripId } = useParams()
   const [params] = useSearchParams()
   const { data, session, addRecord } = useAppData()
@@ -241,7 +243,7 @@ export function BookTicket() {
   return <><Link className="portal-back-link" to={detailUrl}><ArrowLeftIcon/> Journey details</Link><Heading kicker="RESERVE YOUR SEAT" title="One more step." text="Confirm your traveller details. No payment information is requested."/><div className="booking-layout"><form className="booking-form portal-panel" onSubmit={submit}><h2>Passenger details</h2><p>Who will be travelling on this booking?</p><label>Full name<input value={name} onChange={e => setName(e.target.value)} required autoComplete="name"/></label><label>Contact phone<input value={phone} onChange={e => setPhone(e.target.value)} required autoComplete="tel"/></label><label>Number of seats<select value={seats} onChange={e => setSeats(Number(e.target.value))}>{Array.from({ length: Math.min(6, remaining) }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1} {index === 0 ? 'seat' : 'seats'}</option>)}</select></label>{error && <p className="auth-error" role="alert">{error}</p>}<div className="booking-notice"><Info size={16}/> Demo reservation only. No real payment is processed.</div><button className="button button-primary booking-submit" disabled={remaining < 1 || trip.status !== 'Scheduled' || trip.date < today()}>Confirm demo booking <ArrowRight size={16}/></button></form><aside className="booking-summary portal-panel"><span>YOUR JOURNEY</span><h2>{boardStop.name} <i>to</i> {alightStop.name}</h2><div className="summary-detail"><CalendarDays size={15}/>{formatDate(trip.date)} · {boardStop.scheduledTime || trip.departure} – {alightStop.scheduledTime || trip.arrival}</div><div className="summary-detail"><BusFront size={15}/>{vehicle?.name} · {vehicle?.plate}</div><hr/><div className="summary-price"><span>{formatLkr(fare)} × {seats} seat{seats > 1 ? 's' : ''}</span><strong>{formatLkr(total)}</strong></div><small>Full-route demo fare applied; segment pricing is not yet available. No payment is processed.</small></aside></div></>
 }
 
-export function MyBookings() {
+function DemoMyBookings() {
 
   const {data,session,updateRecord}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const bookings=data.bookings.filter(booking=>booking.passengerId===passenger?.id).sort((a,b)=>b.bookedAt.localeCompare(a.bookedAt));const [tab,setTab]=useState('All')
 
@@ -255,7 +257,7 @@ export function MyBookings() {
 
 
 
-export function MyTickets() {
+function DemoMyTickets() {
 
   const {data,session}=useAppData();const passenger=data.passengers.find(item=>item.id===session?.userId);const [params]=useSearchParams();const bookings=data.bookings.filter(booking=>booking.passengerId===passenger?.id&&booking.status!=='Cancelled'&&(!params.get('booking')||params.get('booking')===booking.id));return <><Heading kicker="READY WHEN YOU ARE" title="My tickets." text="Your booking references and trip details, easy to find." action={<button className="button button-outline" onClick={()=>window.print()}><Download size={15}/> Print tickets</button>}/>{bookings.length?<div className="ticket-grid">{bookings.map(booking=>{const trip=data.trips.find(t=>t.id===booking.tripId);const {route,vehicle,driver}=tripInfo(data,trip||{});return <article className="ticket-card" key={booking.id}><div className="ticket-top"><span className="ticket-brand"><BusFront size={17}/> SMARTMOVE</span><Status>{booking.status}</Status></div><div className="ticket-main"><span>BOOKING REFERENCE</span><strong>{booking.id}</strong><h2>{bookingJourney(booking,route,trip).from} <i>→</i><br/>{bookingJourney(booking,route,trip).to}</h2><div className="ticket-date"><CalendarDays size={15}/>{trip?formatDate(trip.date):'Date unavailable'} · {bookingJourney(booking,route,trip).departure}</div><div className="ticket-route-cities"><span>{bookingJourney(booking,route,trip).from}<small>BOARDING</small></span><span>{bookingJourney(booking,route,trip).to}<small>DESTINATION</small></span></div></div><div className="ticket-bottom"><span><small>PASSENGER</small><b>{passenger?.name}</b></span><span><small>SEATS</small><b>{booking.seats}</b></span><span><small>VEHICLE</small><b>{vehicle?.plate||'—'}</b></span><span><small>FARE</small><b>{formatLkr(booking.amount)}</b></span></div><div className="ticket-driver-note">Driver: {driver?.name||'Assigned operator'} · Demo ticket, not valid for travel.</div></article>})}</div>:<Empty title="Your ticket wallet is waiting" text="Confirm a demo booking to see its ticket details here." action={<Link to="/passenger/search" className="button button-primary">Find a journey</Link>}/>}</>
 
@@ -284,3 +286,9 @@ function MegaphoneSmall(){return <BusFront size={18}/>}
 
 
 export function PassengerProfile() {const {data,session,updateAccountAndProfile}=useAppData();const passenger=data.passengers.find(person=>person.id===session?.userId);const account=data.users.find(user=>user.linkedProfileId===passenger?.id);const [values,setValues]=useState({name:passenger?.name||'',email:account?.email||passenger?.email||'',phone:passenger?.phone||'',city:passenger?.city||'Colombo'});const [saved,setSaved]=useState(false);const [error,setError]=useState('');const submit=event=>{event.preventDefault();setError('');if(!values.name.trim())return setError('Name is required.');if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email))return setError('Enter a valid email address.');const result=updateAccountAndProfile(account.userId,'PASSENGER',values,{email:values.email.trim().toLowerCase()});if(result?.error)return setError(result.error);setSaved(true);window.setTimeout(()=>setSaved(false),2500)};return <><Heading kicker="YOUR DETAILS, YOUR WAY" title="My profile." text="Keep your passenger contact details up to date."/><div className="profile-layout"><form className="profile-form portal-panel" onSubmit={submit}><div className="profile-form-heading"><span className="profile-big-avatar">{passenger?.name?.split(' ').map(part=>part[0]).slice(0,2).join('')}</span><div><strong>{passenger?.name}</strong><small>Passenger profile · {passenger?.id}</small></div></div><label>Full name<input value={values.name} onChange={e=>setValues({...values,name:e.target.value})}/></label><label>Email address<input type="email" value={values.email} onChange={e=>setValues({...values,email:e.target.value})}/></label><label>Phone number<input type="tel" value={values.phone} onChange={e=>setValues({...values,phone:e.target.value})}/></label><label>Home city<select value={values.city} onChange={e=>setValues({...values,city:e.target.value})}>{['Colombo','Kandy','Galle','Jaffna','Negombo','Nuwara Eliya','Ella'].map(city=><option key={city}>{city}</option>)}</select></label>{error&&<p className="form-error-text">{error}</p>}{saved&&<p className="profile-saved"><Check size={15}/> Profile updated in this browser.</p>}<button className="button button-primary">Save profile <Check size={15}/></button></form><aside className="profile-note portal-panel"><span><ShieldCheck size={20}/></span><h2>Profile, not password storage.</h2><p>Demo profiles are stored in this browser. Passwords are not saved. Secure account settings need backend authentication.</p><div><small>ACCOUNT ID</small><strong>{account?.userId}</strong></div><div><small>MEMBER SINCE</small><strong>{formatDate(passenger?.joined)}</strong></div></aside></div></>}
+
+export function SearchTrips() { return isApiMode() ? <ApiSearchTrips /> : <DemoSearchTrips /> }
+export function PassengerTripDetails() { return isApiMode() ? <ApiPassengerTripDetails /> : <DemoPassengerTripDetails /> }
+export function BookTicket() { return isApiMode() ? <ApiBookTicket /> : <DemoBookTicket /> }
+export function MyBookings() { return isApiMode() ? <ApiMyBookings /> : <DemoMyBookings /> }
+export function MyTickets() { return isApiMode() ? <ApiMyTickets /> : <DemoMyTickets /> }
