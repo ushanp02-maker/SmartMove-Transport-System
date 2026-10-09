@@ -1,2 +1,4 @@
 import EntityPage from '../components/EntityPage'
-export default function Reviews() { return <EntityPage entity="reviews" /> }
+import ApiFeedbackAdmin from '../components/ApiFeedbackAdmin'
+import { isApiMode } from '../services/apiClient'
+export default function Reviews() { return isApiMode() ? <ApiFeedbackAdmin/> : <EntityPage entity="reviews" /> }
