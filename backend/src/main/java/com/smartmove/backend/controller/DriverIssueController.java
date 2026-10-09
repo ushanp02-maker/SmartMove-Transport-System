@@ -1,7 +1,8 @@
 package com.smartmove.backend.controller;
 
+import com.smartmove.backend.entity.DriverIssue;
+import com.smartmove.backend.repository.DriverIssueRepository;
 import com.smartmove.backend.service.CurrentUserService;
-import com.smartmove.backend.service.MaintenanceService;
 import com.smartmove.backend.service.TripStatusService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -12,19 +13,21 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/driver-issues")
 public class DriverIssueController {
     private final CurrentUserService users;
     private final TripStatusService trips;
-    private final MaintenanceService maintenance;
+    private final DriverIssueRepository issues;
 
-    public DriverIssueController(CurrentUserService users, TripStatusService trips, MaintenanceService maintenance) {
-        this.users = users;
-        this.trips = trips;
-        this.maintenance = maintenance;
+    public DriverIssueController(CurrentUserService users, TripStatusService trips, DriverIssueRepository issues) {
+        this.users=users;
+        this.trips=trips;
+        this.issues=issues;
     }
 
     public record IssueRequest(@NotNull @Positive Long tripId,
@@ -32,7 +35,7 @@ public class DriverIssueController {
                                String priority) {}
 
     @PostMapping
-    public ResponseEntity<MaintenanceService.MaintenanceProfile> report(@Valid @RequestBody IssueRequest request) {
+    public ResponseEntity<DriverIssue> report(@Valid @RequestBody IssueRequest request) {
         users.requireDriver();
         var assigned = trips.getMyTrips().stream()
             .filter(t -> t.tripId().equals(request.tripId()))
@@ -40,12 +43,36 @@ public class DriverIssueController {
         if (assigned.vehicleId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assigned trip has no vehicle");
         }
-        var created = maintenance.createMaintenance(new MaintenanceService.CreateMaintenanceRequest(
-            assigned.vehicleId(), "REPAIR", request.description(),
-            request.priority() == null ? "HIGH" : request.priority(),
-            LocalDate.now(), null, null, null,
-            "Driver issue for trip #" + assigned.tripId(), users.getCurrentAccountId()
-        ));
+        String priority = request.priority()==null ? "HIGH" : request.priority().toUpperCase();
+        if (!Set.of("LOW","NORMAL","HIGH","URGENT").contains(priority)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported issue priority");
+        }
+        var created = issues.save(new DriverIssue(users.getCurrentDriverId(), users.getCurrentAccountId(),
+                assigned.tripId(), assigned.vehicleId(), request.description().trim(), priority));
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @GetMapping("/mine")
+    public List<DriverIssue> mine() {
+        users.requireDriver();
+        return issues.findByDriverIdOrderByCreatedAtDesc(users.getCurrentDriverId());
+    }
+
+    @GetMapping("/admin")
+    public List<DriverIssue> all() {
+        users.requireAdmin();
+        return issues.findAllByOrderByCreatedAtDesc();
+    }
+
+    @PatchMapping("/admin/{id}/status")
+    public DriverIssue update(@PathVariable String id, @RequestBody Map<String,String> input) {
+        users.requireAdmin();
+        String status = input.get("status");
+        if (!Set.of("OPEN","IN_PROGRESS","RESOLVED").contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported issue status");
+        }
+        var issue=issues.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
+        issue.setStatus(status);
+        return issues.save(issue);
     }
 }
