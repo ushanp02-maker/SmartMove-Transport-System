@@ -56,6 +56,7 @@ const ApiDriverSchedule = lazy(() => import('./pages/portal/ApiDriverExtras').th
 const ApiDriverProfile = lazy(() => import('./pages/portal/ApiDriverExtras').then(m => ({default:m.ApiDriverProfile})))
 const ApiDriverAnnouncements = lazy(() => import('./pages/portal/ApiDriverExtras').then(m => ({default:m.ApiDriverAnnouncements})))
 const DriverSchedule = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverSchedule })))
+const ApiDriverVehicle = lazy(() => import('./pages/portal/ApiDriverVehicle'))
 const DriverVehicle = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverVehicle })))
 const DriverStatusPage = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverStatusPage })))
 const DriverIssues = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverIssues })))
@@ -125,7 +126,7 @@ function AppRoutes() {
       <Route path="trips" element={isApiMode() ? <ApiDriverTrips/> : <DriverTrips/>}/>
       <Route path="trip/:tripId" element={isApiMode() ? <ApiDriverTripDetails/> : <DriverTripDetails/>}/>
       <Route path="schedule" element={isApiMode() ? <ApiDriverSchedule/> : <DriverSchedule/>}/>
-      <Route path="vehicle" element={<DriverVehicle/>}/>
+      <Route path="vehicle" element={isApiMode() ? <ApiDriverVehicle/> : <DriverVehicle/>}/>
       <Route path="trip-status" element={isApiMode() ? <ApiDriverTrips/> : <DriverStatusPage/>}/>
       <Route path="issues" element={<DriverIssues/>}/>
       <Route path="announcements" element={isApiMode() ? <ApiDriverAnnouncements/> : <DriverAnnouncements/>}/>
