@@ -27,6 +27,9 @@ This document distinguishes existing API wiring from verified end-to-end behavio
 ## Known implementation limits
 - The API driver dashboard and GPS sharing are wired, but not end-to-end tested.
 - The API admin passenger and booking directories currently support viewing/searching, not full management.
+- API passenger trip search, booking, cancellation, tickets, profile, payments, announcements, reviews, on-demand requests, staff requests, tracking and dashboard now have backend-backed screens; their live workflows are unverified.
+- API driver schedule, profile, assigned vehicle, trip lifecycle, announcements and GPS have backend-backed screens; driver issue reporting still requires integration.
+- GitHub Actions now runs npm lint/build and Maven compile; a successful run is not a substitute for live database tests.
 - Staff and on-demand admin actions link existing trips; they do not automatically create recurring trips.
 - Some passenger/driver secondary pages still use demo-state components and require API replacements.
 - Driver profile creation must be available before linking a DRIVER login to a driverId.
