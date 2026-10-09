@@ -63,6 +63,7 @@ const DriverProfile = lazy(() => import('./pages/portal/DriverPortal').then(modu
 const ApiStaffTransport = lazy(() => import('./pages/portal/ApiStaffTransport'))
 const ApiCustomTripRequests = lazy(() => import('./pages/portal/ApiCustomTripRequests'))
 const CustomTripRequests = lazy(() => import('./pages/portal/TransportServices').then(module => ({ default: module.CustomTripRequests })))
+const ApiPassengerTracking = lazy(() => import('./pages/portal/ApiPassengerTracking'))
 const PassengerTripTracking = lazy(() => import('./pages/portal/TransportServices').then(module => ({ default: module.PassengerTripTracking })))
 const TripDetailsPage = lazy(() => import('./pages/portal/TripDetailsPage'))
 const Landing = lazy(() => import('./pages/Landing'))
@@ -110,8 +111,8 @@ function AppRoutes() {
       <Route path="bookings" element={isApiMode() ? <ApiMyBookings/> : <MyBookings/>}/>
       <Route path="custom-trips" element={isApiMode() ? <ApiCustomTripRequests/> : <CustomTripRequests/>}/>
       <Route path="staff-transport" element={isApiMode() ? <ApiStaffTransport/> : <CustomTripRequests/>}/>
-      <Route path="tracking" element={<PassengerTripTracking/>}/>
-      <Route path="tracking/:tripId" element={<PassengerTripTracking/>}/>
+      <Route path="tracking" element={isApiMode() ? <ApiPassengerTracking/> : <PassengerTripTracking/>}/>
+      <Route path="tracking/:tripId" element={isApiMode() ? <ApiPassengerTracking/> : <PassengerTripTracking/>}/>
       <Route path="tickets" element={isApiMode() ? <ApiMyTickets/> : <MyTickets/>}/>
       <Route path="payments" element={<PassengerPayments/>}/>
       <Route path="reviews" element={isApiMode() ? <ApiPassengerReviews/> : <PassengerReviews/>}/>
