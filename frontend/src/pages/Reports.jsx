@@ -1,3 +1,5 @@
+import { isApiMode } from '../services/apiClient'
+import ApiReports from '../components/ApiReports'
 import { Link } from 'react-router-dom'
 import { Download, ChartNoAxesCombined, TrendingUp, Route, Users } from 'lucide-react'
 import { useAppData } from '../services/useAppData'
@@ -5,6 +7,7 @@ import { formatLkr } from '../services/formatters'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function Reports() {
+  if (isApiMode()) return <ApiReports />
   const { data } = useAppData()
   const routeRows = data.routes.map(route => ({ name: route.origin.split(' ')[0] + '–' + route.destination.split(' ')[0], trips: data.trips.filter(trip => trip.routeId === route.id).length * 11 + 18, revenue: data.bookings.filter(booking => data.trips.some(trip => trip.id === booking.tripId && trip.routeId === route.id) && booking.status !== 'Cancelled').reduce((total, booking) => total + booking.amount, 0) }))
   const revenue = data.payments.filter(payment => payment.status === 'Paid').reduce((sum, payment) => sum + payment.amount, 0)
