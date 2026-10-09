@@ -54,7 +54,7 @@ const Register = lazy(() => import('./pages/Register'))
 function AdminShell() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { dataMode } = useAppData()
-  return <div className="app-shell"><Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} /><div className="app-main"><Navbar onMenu={() => setMenuOpen(true)} /><main className="main-content"><Suspense fallback={<div className="page-loading">Loading workspace…</div>}><Outlet/></Suspense></main><footer className="app-footer"><span>© 2026 SmartMove Transport Solutions</span><span>Operations console <i />{dataMode==='API'?'API not connected · Demo data':'Local demo environment'}</span></footer></div></div>
+  return <div className="app-shell"><Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} /><div className="app-main"><Navbar onMenu={() => setMenuOpen(true)} /><main className="main-content"><Suspense fallback={<div className="page-loading">Loading workspace…</div>}><Outlet/></Suspense></main><footer className="app-footer"><span>© 2026 SmartMove Transport Solutions</span><span>Operations console <i />{dataMode==='API'?'API mode · Integration in progress':'Local demo environment'}</span></footer></div></div>
 }
 
 function GuardedPortal({ role, children, superAdminOnly = false }) {
@@ -62,7 +62,7 @@ function GuardedPortal({ role, children, superAdminOnly = false }) {
 }
 
 function PublicTravelPage({ children }) {
-  return <div className="travel-public"><header className="travel-public-header"><Link className="public-logo" to="/"><span><BusFront size={21}/></span><b>smart<span>move</span></b></Link><nav><Link to="/#destinations">Destinations</Link><Link to="/#routes">Routes</Link><Link to="/login">Log in</Link><Link className="public-signup" to="/register">Sign up</Link></nav></header><main className="travel-public-main">{children}</main><footer className="travel-public-footer">SmartMove Transport Solutions · Demo trip information only</footer></div>
+  return <div className="travel-public"><header className="travel-public-header"><Link className="public-logo" to="/"><span><BusFront size={21}/></span><b>smart<span>move</span></b></Link><nav><Link to="/#destinations">Destinations</Link><Link to="/#routes">Routes</Link><Link to="/login">Log in</Link><Link className="public-signup" to="/register">Sign up</Link></nav></header><main className="travel-public-main">{children}</main><footer className="travel-public-footer">SmartMove Transport Solutions · Trip availability subject to confirmation</footer></div>
 }
 
 function PassengerSearchEntry() {
@@ -75,7 +75,7 @@ function PassengerBookEntry() {
   const { session, currentUser } = useAppData()
   const { pathname, search } = useLocation()
   if (!session || currentUser?.accountStatus !== 'ACTIVE') return <Navigate to={`/login?next=${encodeURIComponent(pathname + search)}`} replace/>
-  if (currentUser?.role !== 'PASSENGER') return <PublicTravelPage><div className="booking-role-notice"><ShieldCheck size={25}/><h1>Passenger account required</h1><p>Only passenger accounts can make demo bookings. You are signed in with a {currentUser?.role?.replace('_',' ') || 'non-passenger'} account.</p><Link className="button button-outline" to="/">Return home</Link><Link className="button button-primary" to="/login?switch=1">Switch demo account</Link></div></PublicTravelPage>
+  if (currentUser?.role !== 'PASSENGER') return <PublicTravelPage><div className="booking-role-notice"><ShieldCheck size={25}/><h1>Passenger account required</h1><p>Only passenger accounts can make bookings. You are signed in with a {currentUser?.role?.replace('_',' ') || 'non-passenger'} account.</p><Link className="button button-outline" to="/">Return home</Link><Link className="button button-primary" to="/login?switch=1">Switch account</Link></div></PublicTravelPage>
   return <PortalShell role="passenger"><BookTicket/></PortalShell>
 }
 
