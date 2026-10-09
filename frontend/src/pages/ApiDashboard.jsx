@@ -23,7 +23,7 @@ export default function ApiDashboard(){
  const otherBookings=Math.max(0,n(data?.totalBookings)-bookingItems.reduce((a,x)=>a+x[1],0))
  const fleetItems=[['Available',n(data?.availableVehicles)],['Other',Math.max(0,n(data?.totalVehicles)-n(data?.availableVehicles))]]
  return <div className="page-content sm-dashboard sm-compact">
-  <div className="sm-dash-header"><div><span className="sm-eyebrow">OPERATIONS / OVERVIEW</span><h1>Good to see you, Administrator.</h1><p>Everything happening across your transport network, in one place.</p></div><button className="sm-refresh" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={14}/> Refresh</button></div>
+  <header className="sm-dash-header sm-bus-banner"><div className="sm-banner-content"><span className="sm-eyebrow">WELCOME BACK · SMARTMOVE OPERATIONS</span><h1>Administrator</h1><p>Manage your fleet, routes and passengers. Keep Sri Lanka moving.</p></div><button className="sm-refresh" onClick={()=>setRefresh(x=>x+1)}><RefreshCw size={14}/> Refresh</button></header>
   <div className="sm-dash-shortcuts"><Link to="/admin/trips"><CalendarDays size={14}/> Schedule trip <ArrowRight size={13}/></Link><Link to="/admin/routes"><Route size={14}/> Routes</Link><Link to="/admin/vehicles"><BusFront size={14}/> Fleet</Link><Link to="/admin/reports"><Activity size={14}/> Reports</Link></div>
   {error&&<p role="alert" className="auth-error">{error}</p>}
   {!data?<div className="sm-panel">Loading live dashboard…</div>:<>
