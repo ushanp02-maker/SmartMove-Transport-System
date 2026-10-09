@@ -1,2 +1,4 @@
 import EntityPage from '../components/EntityPage'
-export default function Bookings() { return <EntityPage entity="bookings" /> }
+import ApiDirectory from '../components/ApiDirectory'
+import { isApiMode } from '../services/apiClient'
+export default function Bookings() { return isApiMode() ? <ApiDirectory entity="bookings"/> : <EntityPage entity="bookings"/> }
