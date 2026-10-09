@@ -29,6 +29,11 @@ const ApiRequestAdmin = lazy(() => import('./components/ApiRequestAdmin'))
 const CustomTripRequestsAdmin = lazy(() => import('./pages/admin/CustomTripRequests'))
 const StaffTransportAdmin = lazy(() => import('./pages/admin/StaffTransport'))
 const LiveFleet = lazy(() => import('./pages/admin/LiveFleet'))
+const ApiSearchTrips = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiSearchTrips})))
+const ApiPassengerTripDetails = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiPassengerTripDetails})))
+const ApiBookTicket = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiBookTicket})))
+const ApiMyBookings = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiMyBookings})))
+const ApiMyTickets = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiMyTickets})))
 const PassengerDashboard = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerDashboard })))
 const SearchTrips = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.SearchTrips })))
 const BookTicket = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.BookTicket })))
@@ -74,8 +79,8 @@ function PublicTravelPage({ children }) {
 
 function PassengerSearchEntry() {
   const { currentUser } = useAppData()
-  if (currentUser?.role === 'PASSENGER' && currentUser.accountStatus === 'ACTIVE') return <PortalShell role="passenger"><SearchTrips/></PortalShell>
-  return <PublicTravelPage><SearchTrips/></PublicTravelPage>
+  if (currentUser?.role === 'PASSENGER' && currentUser.accountStatus === 'ACTIVE') return <PortalShell role="passenger">{isApiMode() ? <ApiSearchTrips/> : <SearchTrips/>}</PortalShell>
+  return <PublicTravelPage>{isApiMode() ? <ApiSearchTrips/> : <SearchTrips/>}</PublicTravelPage>
 }
 
 function PassengerBookEntry() {
@@ -83,7 +88,7 @@ function PassengerBookEntry() {
   const { pathname, search } = useLocation()
   if (!session || currentUser?.accountStatus !== 'ACTIVE') return <Navigate to={`/login?next=${encodeURIComponent(pathname + search)}`} replace/>
   if (currentUser?.role !== 'PASSENGER') return <PublicTravelPage><div className="booking-role-notice"><ShieldCheck size={25}/><h1>Passenger account required</h1><p>Only passenger accounts can make bookings. You are signed in with a {currentUser?.role?.replace('_',' ') || 'non-passenger'} account.</p><Link className="button button-outline" to="/">Return home</Link><Link className="button button-primary" to="/login?switch=1">Switch account</Link></div></PublicTravelPage>
-  return <PortalShell role="passenger"><BookTicket/></PortalShell>
+  return <PortalShell role="passenger">{isApiMode() ? <ApiBookTicket/> : <BookTicket/>}</PortalShell>
 }
 
 function AppRoutes() {
@@ -92,15 +97,15 @@ function AppRoutes() {
     <Route path="/login" element={<Login/>}/>
     <Route path="/register" element={<Register/>}/>
     <Route path="/passenger/search" element={<PassengerSearchEntry/>}/>
-    <Route path="/passenger/trip/:tripId" element={<PublicTravelPage><TripDetailsPage/></PublicTravelPage>}/>
+    <Route path="/passenger/trip/:tripId" element={<PublicTravelPage>{isApiMode() ? <ApiPassengerTripDetails/> : <TripDetailsPage/>}</PublicTravelPage>}/>
     <Route path="/passenger/book/:tripId" element={<PassengerBookEntry/>}/>
     <Route path="/passenger" element={<GuardedPortal role="passenger"><PortalShell role="passenger"/></GuardedPortal>}>
       <Route index element={<PassengerDashboard/>}/>
-      <Route path="bookings" element={<MyBookings/>}/>
+      <Route path="bookings" element={isApiMode() ? <ApiMyBookings/> : <MyBookings/>}/>
       <Route path="custom-trips" element={isApiMode() ? <ApiCustomTripRequests/> : <CustomTripRequests/>}/>
       <Route path="tracking" element={<PassengerTripTracking/>}/>
       <Route path="tracking/:tripId" element={<PassengerTripTracking/>}/>
-      <Route path="tickets" element={<MyTickets/>}/>
+      <Route path="tickets" element={isApiMode() ? <ApiMyTickets/> : <MyTickets/>}/>
       <Route path="payments" element={<PassengerPayments/>}/>
       <Route path="reviews" element={<PassengerReviews/>}/>
       <Route path="announcements" element={<PassengerAnnouncements/>}/>
