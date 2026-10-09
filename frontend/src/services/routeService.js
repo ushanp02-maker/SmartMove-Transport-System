@@ -2,10 +2,11 @@
 import { request, isApiMode } from './apiClient'
 import { findSupportedPlace } from './placeCatalogue'
 
-// Normalize routes so every route has ordered stops.
-// Older routes without a stop list still work.
-const normalize = route => {
-  const routeId = route.routeId || route.id
+// Shared route normalization for DEMO and API records.
+export function normalizeRoute(route) {
+  if (!route) return null
+
+  const routeId = route.routeId ?? route.id
 
   const rawStops = route.stops?.length
     ? route.stops
@@ -13,79 +14,92 @@ const normalize = route => {
         {
           stopOrder: 1,
           name: route.origin,
-          ...(() => {
-            const place = findSupportedPlace(route.origin)
-            return place
-              ? { latitude: place.latitude, longitude: place.longitude }
-              : {}
-          })(),
+          ...getPlaceCoordinates(route.origin),
         },
         {
           stopOrder: 2,
           name: route.destination,
-          ...(() => {
-            const place = findSupportedPlace(route.destination)
-            return place
-              ? { latitude: place.latitude, longitude: place.longitude }
-              : {}
-          })(),
+          ...getPlaceCoordinates(route.destination),
         },
       ]
 
   const stops = rawStops
     .map((stop, index) => ({
       ...stop,
+      name: stop.name ?? stop.stopName ?? '',
       stopOrder: Number(stop.stopOrder ?? index + 1),
     }))
     .sort((a, b) => a.stopOrder - b.stopOrder)
     .map(stop => ({
       ...stop,
       stopId:
-        stop.stopId ||
-        stop.id ||
+        stop.stopId ??
+        stop.id ??
         `${routeId}-STOP-${stop.stopOrder}`,
     }))
 
   return {
     ...route,
+    id: routeId,
+    routeId,
+    status:
+      String(route.status || 'ACTIVE').toUpperCase() ===
+      'ACTIVE'
+        ? 'Active'
+        : 'Inactive',
     serviceType: route.serviceType || 'COMMUTER',
     stops,
   }
 }
 
-const routeForTrip = (trip, data) => {
-  if (trip.serviceType === 'STAFF') {
-    return data.staffRoutes.find(
-      route => (route.routeId || route.id) === trip.routeId
-    )
-  }
+function getPlaceCoordinates(name) {
+  const place = name ? findSupportedPlace(name) : null
 
-  return data.routes.find(
-    route => (route.routeId || route.id) === trip.routeId
+  return place
+    ? {
+        latitude: place.latitude,
+        longitude: place.longitude,
+      }
+    : {}
+}
+
+function routeForTrip(trip, data) {
+  const routes =
+    trip.serviceType === 'STAFF'
+      ? data.staffRoutes || []
+      : data.routes || []
+
+  return routes.find(
+    route =>
+      String(route.routeId ?? route.id) ===
+      String(trip.routeId)
   )
 }
 
-// Find a valid boarding and destination pair.
-// The destination must appear AFTER boarding in route order.
+// Ensures boarding occurs before destination.
 export function matchRouteStops(
   route,
   { from = '', to = '' } = {}
 ) {
   if (!route) return null
 
-  const stops = normalize(route).stops
-
+  const stops = normalizeRoute(route).stops
   if (stops.length < 2) return null
 
   const normalizeName = value =>
-    String(value ?? '').trim().toLocaleLowerCase()
+    String(value ?? '').trim().toLowerCase()
 
   const matches = (query, stop) =>
     !normalizeName(query) ||
     normalizeName(stop.name).includes(normalizeName(query))
 
-  const boardingStops = stops.filter(stop => matches(from, stop))
-  const destinationStops = stops.filter(stop => matches(to, stop))
+  const boardingStops = stops.filter(stop =>
+    matches(from, stop)
+  )
+
+  const destinationStops = stops.filter(stop =>
+    matches(to, stop)
+  )
 
   for (const boardStop of boardingStops) {
     const alightStop = destinationStops.find(
@@ -94,38 +108,36 @@ export function matchRouteStops(
 
     if (!alightStop) continue
 
-    const servedStops = stops.filter(
-      stop =>
-        stop.stopOrder >= boardStop.stopOrder &&
-        stop.stopOrder <= alightStop.stopOrder
-    )
-
     return {
       boardStop,
       alightStop,
-      servedStops,
+      servedStops: stops.filter(
+        stop =>
+          stop.stopOrder >= boardStop.stopOrder &&
+          stop.stopOrder <= alightStop.stopOrder
+      ),
     }
   }
 
   return null
 }
 
-// Resolve a passenger's selected stops using stable identifiers.
-// This is used when moving from search results to booking.
 export function resolveBookingStops(
   route,
   { boardingStopId, destinationStopId } = {}
 ) {
   if (!route) return null
 
-  const stops = normalize(route).stops
+  const stops = normalizeRoute(route).stops
 
   const boardStop = stops.find(
-    stop => String(stop.stopId) === String(boardingStopId)
+    stop =>
+      String(stop.stopId) === String(boardingStopId)
   )
 
   const alightStop = stops.find(
-    stop => String(stop.stopId) === String(destinationStopId)
+    stop =>
+      String(stop.stopId) === String(destinationStopId)
   )
 
   if (!boardStop || !alightStop) return null
@@ -145,7 +157,7 @@ export function resolveBookingStops(
   }
 }
 
-// Find scheduled trips matching a passenger's requested journey.
+// Existing DEMO-mode trip search remains available.
 export function searchScheduledTrips(
   data,
   {
@@ -157,8 +169,11 @@ export function searchScheduledTrips(
   } = {}
 ) {
   const now = new Date()
+
   const today =
-    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    `${now.getFullYear()}-` +
+    `${String(now.getMonth() + 1).padStart(2, '0')}-` +
+    `${String(now.getDate()).padStart(2, '0')}`
 
   const passengerCount = Number(passengers)
 
@@ -171,7 +186,8 @@ export function searchScheduledTrips(
 
   const trips = (data.trips || []).filter(
     trip =>
-      trip.status === 'Scheduled' &&
+      String(trip.status).toUpperCase() ===
+        'SCHEDULED' &&
       trip.date >= today &&
       (!date || trip.date === date) &&
       (trip.serviceType || 'COMMUTER') === serviceType
@@ -181,11 +197,13 @@ export function searchScheduledTrips(
     .flatMap(trip => {
       const route = routeForTrip(trip, data)
 
-      if (!route || route.status !== 'Active') {
+      if (!route) return []
+
+      const normalizedRoute = normalizeRoute(route)
+
+      if (normalizedRoute.status !== 'Active') {
         return []
       }
-
-      const normalizedRoute = normalize(route)
 
       const routeMatch = matchRouteStops(
         normalizedRoute,
@@ -198,7 +216,8 @@ export function searchScheduledTrips(
         .filter(
           booking =>
             booking.tripId === trip.id &&
-            booking.status !== 'Cancelled'
+            String(booking.status).toUpperCase() !==
+              'CANCELLED'
         )
         .reduce(
           (sum, booking) =>
@@ -210,7 +229,8 @@ export function searchScheduledTrips(
         .filter(
           booking =>
             booking.tripId === trip.id &&
-            booking.status !== 'Cancelled'
+            String(booking.status).toUpperCase() !==
+              'CANCELLED'
         )
         .reduce(
           (sum, booking) =>
@@ -239,27 +259,140 @@ export function searchScheduledTrips(
     .sort(
       (a, b) =>
         a.trip.date.localeCompare(b.trip.date) ||
-        a.trip.departure.localeCompare(b.trip.departure)
+        String(a.trip.departure).localeCompare(
+          String(b.trip.departure)
+        )
     )
 }
 
-// Future Spring Boot API integration.
-export async function searchRoutesApi(params) {
+// ============================================
+// ORACLE / SPRING BOOT ROUTE API
+// ============================================
+
+export async function listRoutesApi() {
   if (!isApiMode()) {
     return { mode: 'DEMO', items: [] }
   }
 
+  const routes = await request('/routes')
+  return routes.map(normalizeRoute)
+}
+
+export async function getActiveRoutesApi() {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', items: [] }
+  }
+
+  const routes = await request('/routes/active')
+  return routes.map(normalizeRoute)
+}
+
+export async function searchRoutesApi(params = {}) {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', items: [] }
+  }
+
+  const keyword =
+    typeof params === 'string'
+      ? params
+      : params.keyword ??
+        params.from ??
+        params.to ??
+        ''
+
+  const query = new URLSearchParams()
+
+  if (keyword.trim()) {
+    query.set('keyword', keyword.trim())
+  }
+
+  const url = query.toString()
+    ? `/routes/search?${query}`
+    : '/routes/search'
+
+  const routes = await request(url)
+  return routes.map(normalizeRoute)
+}
+
+export async function getRouteApi(routeId) {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', item: null }
+  }
+
+  const route = await request(
+    `/routes/${encodeURIComponent(routeId)}`
+  )
+
+  return normalizeRoute(route)
+}
+
+export async function getRouteDetailsApi(routeId) {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', item: null }
+  }
+
+  const details = await request(
+    `/routes/${encodeURIComponent(routeId)}/details`
+  )
+
+  return normalizeRoute(details)
+}
+
+export async function getRouteStops(routeId) {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', items: [] }
+  }
+
+  const details = await getRouteDetailsApi(routeId)
+
+  return details.stops
+}
+
+export async function findRoutesBetweenStops(
+  boardingStop,
+  destinationStop
+) {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', items: [] }
+  }
+
+  const query = new URLSearchParams({
+    boardingStop,
+    destinationStop,
+  })
+
+  const routes = await request(
+    `/routes/between-stops?${query}`
+  )
+
+  return routes.map(normalizeRoute)
+}
+
+export async function getRouteSegment(
+  routeId,
+  boardingStopId,
+  destinationStopId
+) {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', item: null }
+  }
+
+  const query = new URLSearchParams({
+    boardingStopId: String(boardingStopId),
+    destinationStopId: String(destinationStopId),
+  })
+
   return request(
-    `/routes/search?${new URLSearchParams(params)}`
+    `/routes/${encodeURIComponent(routeId)}/segment?${query}`
   )
 }
 
-export const getRouteStops = routeId =>
-  isApiMode()
-    ? request(`/routes/${encodeURIComponent(routeId)}/stops`)
-    : Promise.resolve({ mode: 'DEMO', items: [] })
+export async function getNearbyStops() {
+  if (!isApiMode()) {
+    return { mode: 'DEMO', items: [] }
+  }
 
-export const getNearbyStops = params =>
-  isApiMode()
-    ? request(`/stops/nearby?${new URLSearchParams(params)}`)
-    : Promise.resolve({ mode: 'DEMO', items: [] })
+  throw new Error(
+    'Nearby-stop API is not yet implemented in Spring Boot.'
+  )
+}

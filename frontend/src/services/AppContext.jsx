@@ -2,7 +2,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { initialData } from '../data/mockData'
 import { DataContext } from './DataContext'
-import { dataMode } from './apiClient'
+import {
+  dataMode,
+  isApiMode,
+  setApiCredentials as setHttpCredentials,
+  clearApiCredentials,
+} from './apiClient'
+import {
+  login as apiLogin,
+  registerPassenger as apiRegisterPassenger,
+} from './authService'
 
 const STORAGE_KEY = 'smartmove-admin-demo-v1'
 const SESSION_KEY = 'smartmove-demo-session-v1'
@@ -14,8 +23,11 @@ function normalizeAccounts(data) {
   const appendLegacy = (profiles, role, prefix, makeUsername) => {
     for (const profile of profiles || []) {
       const linked = users.some(
-        user => user.linkedProfileId === profile.id && user.role === role
+        user =>
+          user.linkedProfileId === profile.id &&
+          user.role === role
       )
+
       if (linked) continue
 
       let username = String(
@@ -24,10 +36,14 @@ function normalizeAccounts(data) {
 
       const email = String(
         profile.email ||
-        `${username}@${role.toLowerCase()}.smartmove.demo`
+          `${username}@${role.toLowerCase()}.smartmove.demo`
       ).toLowerCase()
 
-      if (users.some(user => user.email?.toLowerCase() === email)) {
+      if (
+        users.some(
+          user => user.email?.toLowerCase() === email
+        )
+      ) {
         continue
       }
 
@@ -36,12 +52,18 @@ function normalizeAccounts(data) {
         let suffix = 2
 
         while (
-          users.some(user => user.username?.toLowerCase() === username)
+          users.some(
+            user =>
+              user.username?.toLowerCase() === username
+          )
         ) {
           username = `${base}${suffix++}`
         }
       } else if (
-        users.some(user => user.username?.toLowerCase() === username)
+        users.some(
+          user =>
+            user.username?.toLowerCase() === username
+        )
       ) {
         continue
       }
@@ -74,7 +96,8 @@ function normalizeAccounts(data) {
     data.drivers,
     'DRIVER',
     'USR-DRIVER',
-    profile => profile.username || profile.id.toLowerCase()
+    profile =>
+      profile.username || profile.id.toLowerCase()
   )
 
   appendLegacy(
@@ -87,11 +110,7 @@ function normalizeAccounts(data) {
       profile.id.toLowerCase()
   )
 
-  const superAdmin = users.find(
-    user => user.role === 'SUPER_ADMIN'
-  )
-
-  if (!superAdmin) {
+  if (!users.some(user => user.role === 'SUPER_ADMIN')) {
     users.unshift({
       userId: 'USR-ADMIN-001',
       username: 'superadmin',
@@ -123,9 +142,12 @@ function normalizeAccounts(data) {
   appendMissing(
     'trips',
     initialData.trips.filter(trip =>
-      ['TR-4030', 'TR-4031', 'TR-ST-001', 'TR-ST-002'].includes(
-        trip.id
-      )
+      [
+        'TR-4030',
+        'TR-4031',
+        'TR-ST-001',
+        'TR-ST-002',
+      ].includes(trip.id)
     )
   )
 
@@ -177,149 +199,193 @@ function normalizeAccounts(data) {
   return merged
 }
 
-export function DataProvider({ children }) {
-  const [data, setData] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
+function accountFromBackend(response) {
+  const role = String(
+    response.role || 'PASSENGER'
+  ).toUpperCase()
 
-      if (!saved) {
-        return normalizeAccounts(initialData)
-      }
+  const linkedProfileId =
+    role === 'PASSENGER'
+      ? response.passengerId
+      : role === 'DRIVER'
+        ? response.driverId
+        : null
 
-      const stored = JSON.parse(saved)
-      const merged = { ...initialData, ...stored }
+  return {
+    userId: String(response.accountId),
+    username: response.username,
+    email: response.email,
+    role,
+    accountStatus: response.accountStatus,
+    linkedProfileId:
+      linkedProfileId == null
+        ? null
+        : String(linkedProfileId),
+    backendAccountId: response.accountId,
+    backendProfileId: linkedProfileId,
+  }
+}
 
-      if (
-        Number(localStorage.getItem(DATA_VERSION_KEY) || 0) < 2
-      ) {
-        for (const collection of [
-          'trips',
-          'bookings',
-          'payments',
-          'announcements',
-        ]) {
-          merged[collection] = (
-            merged[collection] || []
-          ).map(record => {
-            const seed = initialData[collection].find(
-              item => item.id === record.id
-            )
+function getInitialData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
 
-            const dateKey =
-              collection === 'trips'
-                ? 'date'
-                : collection === 'bookings'
-                  ? 'bookedAt'
-                  : 'date'
-
-            return seed &&
-              record[dateKey]?.startsWith('2025-')
-              ? {
-                  ...record,
-                  [dateKey]: seed[dateKey],
-                }
-              : record
-          })
-        }
-
-        for (const [collection, ids] of Object.entries({
-          routes: ['RT-081'],
-          trips: ['TR-4025', 'TR-4026'],
-          bookings: ['BK-9086'],
-        })) {
-          for (const id of ids) {
-            const seed = initialData[collection].find(
-              item => item.id === id
-            )
-
-            if (
-              seed &&
-              !merged[collection].some(item => item.id === id)
-            ) {
-              merged[collection].push(seed)
-            }
-          }
-        }
-      }
-
-      return normalizeAccounts(merged)
-    } catch {
+    if (!saved) {
       return normalizeAccounts(initialData)
     }
-  })
 
-  const [session, setSession] = useState(() => {
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem(SESSION_KEY) || 'null'
-      )
+    const stored = JSON.parse(saved)
+    const merged = { ...initialData, ...stored }
 
-      if (!saved) return null
+    if (
+      Number(
+        localStorage.getItem(DATA_VERSION_KEY) || 0
+      ) < 2
+    ) {
+      for (const collection of [
+        'trips',
+        'bookings',
+        'payments',
+        'announcements',
+      ]) {
+        merged[collection] = (
+          merged[collection] || []
+        ).map(record => {
+          const seed = initialData[collection].find(
+            item => item.id === record.id
+          )
 
-      const storedData = JSON.parse(
-        localStorage.getItem(STORAGE_KEY) || 'null'
-      )
+          const dateKey =
+            collection === 'trips'
+              ? 'date'
+              : collection === 'bookings'
+                ? 'bookedAt'
+                : 'date'
 
-      const accounts = normalizeAccounts({
-        ...initialData,
-        ...storedData,
-      })
-
-      if (
-        saved.accountId &&
-        accounts.users.some(
-          user => user.userId === saved.accountId
-        )
-      ) {
-        return saved
+          return seed &&
+            record[dateKey]?.startsWith('2025-')
+            ? {
+                ...record,
+                [dateKey]: seed[dateKey],
+              }
+            : record
+        })
       }
 
-      if (
-        saved.userId &&
-        accounts.users.some(
-          user => user.linkedProfileId === saved.userId
-        )
-      ) {
-        const account = accounts.users.find(
-          user => user.linkedProfileId === saved.userId
-        )
+      for (const [collection, ids] of Object.entries({
+        routes: ['RT-081'],
+        trips: ['TR-4025', 'TR-4026'],
+        bookings: ['BK-9086'],
+      })) {
+        for (const id of ids) {
+          const seed = initialData[collection].find(
+            item => item.id === id
+          )
 
-        return {
-          userId: saved.userId,
-          accountId: account.userId,
+          if (
+            seed &&
+            !merged[collection].some(
+              item => item.id === id
+            )
+          ) {
+            merged[collection].push(seed)
+          }
         }
       }
+    }
 
-      const legacyProfileId =
-        saved.profileId || saved.userId
+    return normalizeAccounts(merged)
+  } catch {
+    return normalizeAccounts(initialData)
+  }
+}
 
-      const legacyRole =
-        saved.role === 'admin'
-          ? 'ADMIN'
-          : saved.role?.toUpperCase()
+function getDemoSession() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(SESSION_KEY) || 'null'
+    )
 
-      const user = accounts.users.find(
-        item =>
-          item.linkedProfileId === legacyProfileId &&
-          (
-            item.role === legacyRole ||
-            (
-              legacyRole === 'ADMIN' &&
-              item.role === 'SUPER_ADMIN'
-            )
-          )
+    if (!saved) return null
+
+    const storedData = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) || 'null'
+    )
+
+    const accounts = normalizeAccounts({
+      ...initialData,
+      ...storedData,
+    })
+
+    if (
+      saved.accountId &&
+      accounts.users.some(
+        user => user.userId === saved.accountId
+      )
+    ) {
+      return saved
+    }
+
+    if (
+      saved.userId &&
+      accounts.users.some(
+        user => user.linkedProfileId === saved.userId
+      )
+    ) {
+      const account = accounts.users.find(
+        user =>
+          user.linkedProfileId === saved.userId
       )
 
-      return user
-        ? {
-            userId: user.linkedProfileId,
-            accountId: user.userId,
-          }
-        : null
-    } catch {
-      return null
+      return {
+        userId: saved.userId,
+        accountId: account.userId,
+      }
     }
-  })
+
+    const legacyProfileId =
+      saved.profileId || saved.userId
+
+    const legacyRole =
+      saved.role === 'admin'
+        ? 'ADMIN'
+        : saved.role?.toUpperCase()
+
+    const user = accounts.users.find(
+      item =>
+        item.linkedProfileId === legacyProfileId &&
+        (
+          item.role === legacyRole ||
+          (
+            legacyRole === 'ADMIN' &&
+            item.role === 'SUPER_ADMIN'
+          )
+        )
+    )
+
+    return user
+      ? {
+          userId: user.linkedProfileId,
+          accountId: user.userId,
+        }
+      : null
+  } catch {
+    return null
+  }
+}
+
+export function DataProvider({ children }) {
+  const [data, setData] = useState(getInitialData)
+
+  const [session, setSession] = useState(() =>
+    isApiMode() ? null : getDemoSession()
+  )
+
+  const [apiAccount, setApiAccount] = useState(null)
+
+  // Kept in memory only, never localStorage.
+  const [apiCredentials, setApiCredentials] =
+    useState(null)
 
   useEffect(() => {
     localStorage.setItem(
@@ -331,6 +397,11 @@ export function DataProvider({ children }) {
   }, [data])
 
   useEffect(() => {
+    if (isApiMode()) {
+      localStorage.removeItem(SESSION_KEY)
+      return
+    }
+
     if (session) {
       localStorage.setItem(
         SESSION_KEY,
@@ -341,27 +412,133 @@ export function DataProvider({ children }) {
     }
   }, [session])
 
+  const currentUser = isApiMode()
+    ? apiAccount
+    : data.users.find(
+        user => user.userId === session?.accountId
+      ) ||
+      data.users.find(
+        user => user.linkedProfileId === session?.userId
+      ) ||
+      null
+
+  const authenticate = async (identity, password) => {
+    if (!identity?.trim() || !password) {
+      return {
+        error:
+          'Enter your username or email and password.',
+      }
+    }
+
+    if (!isApiMode()) {
+      return {
+        error:
+          'Real authentication requires API mode.',
+      }
+    }
+
+    try {
+      const response = await apiLogin({
+        usernameOrEmail: identity.trim(),
+        password,
+      })
+
+      const account = accountFromBackend(response)
+
+      if (account.accountStatus !== 'ACTIVE') {
+        return {
+          error: 'This account is not active.',
+        }
+      }
+
+      // Shared authentication for ALL backend services.
+      // Spring Security HTTP Basic uses username.
+      setHttpCredentials(account.username, password)
+
+      setApiAccount(account)
+
+      setApiCredentials({
+        usernameOrEmail: identity.trim(),
+        password,
+      })
+
+      setSession({
+        accountId: account.userId,
+        userId: account.linkedProfileId,
+      })
+
+      return { account }
+    } catch (error) {
+      clearApiCredentials()
+      setApiAccount(null)
+      setApiCredentials(null)
+      setSession(null)
+
+      return {
+        error: error.message || 'Login failed.',
+      }
+    }
+  }
+
+  const registerRealPassenger = async profile => {
+    if (!isApiMode()) {
+      return {
+        error:
+          'Real registration requires API mode.',
+      }
+    }
+
+    try {
+      const response = await apiRegisterPassenger({
+        username: profile.username.trim(),
+        email: profile.email.trim(),
+        password: profile.password,
+        fullName: (
+          profile.fullName || profile.name
+        ).trim(),
+        phone: profile.phone?.trim() || '',
+        city: profile.city?.trim() || 'Colombo',
+      })
+
+      return {
+        account: accountFromBackend(response),
+        message: response.message,
+      }
+    } catch (error) {
+      return {
+        error:
+          error.message || 'Registration failed.',
+      }
+    }
+  }
+
   const api = useMemo(() => ({
     data,
     dataMode,
 
     integrationNotice:
       dataMode === 'API'
-        ? 'API mode is configured, but domain endpoints are not connected; these modules still use demo records.'
+        ? 'Oracle authentication is connected. Other modules are being integrated.'
         : 'Demo data is stored in this browser only.',
 
     session,
+    currentUser,
+    apiCredentials,
 
-    currentUser:
-      data.users.find(
-        user => user.userId === session?.accountId
-      ) ||
-      data.users.find(
-        user => user.linkedProfileId === session?.userId
-      ) ||
-      null,
+    authenticate,
+    registerRealPassenger,
 
-    demoAuthenticate: (identity, demoAcknowledged) => {
+    demoAuthenticate: (
+      identity,
+      demoAcknowledged
+    ) => {
+      if (isApiMode()) {
+        return {
+          error:
+            'Demo login is disabled in API mode. Use real authentication.',
+        }
+      }
+
       if (!demoAcknowledged) {
         return {
           error:
@@ -400,13 +577,28 @@ export function DataProvider({ children }) {
     },
 
     signOut: () => {
+      // Clears credentials used by all backend services.
+      clearApiCredentials()
+
       localStorage.removeItem(SESSION_KEY)
+      setApiAccount(null)
+      setApiCredentials(null)
       setSession(null)
     },
 
     createPassengerAccount: profile => {
-      const username = profile.username.trim().toLowerCase()
-      const email = profile.email.trim().toLowerCase()
+      if (isApiMode()) {
+        return {
+          error:
+            'Use registerRealPassenger() for backend registration.',
+        }
+      }
+
+      const username =
+        profile.username.trim().toLowerCase()
+
+      const email =
+        profile.email.trim().toLowerCase()
 
       if (
         data.users.some(
@@ -422,10 +614,14 @@ export function DataProvider({ children }) {
       }
 
       const profileId =
-        `PS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+        `PS-${crypto.randomUUID()
+          .slice(0, 8)
+          .toUpperCase()}`
 
       const userId =
-        `USR-PASS-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+        `USR-PASS-${crypto.randomUUID()
+          .slice(0, 8)
+          .toUpperCase()}`
 
       setData(current => ({
         ...current,
@@ -438,7 +634,9 @@ export function DataProvider({ children }) {
             username,
             phone: profile.phone.trim(),
             city: profile.city || 'Colombo',
-            joined: new Date().toISOString().slice(0, 10),
+            joined: new Date()
+              .toISOString()
+              .slice(0, 10),
             trips: 0,
           },
           ...current.passengers,
@@ -470,8 +668,11 @@ export function DataProvider({ children }) {
       profile,
       accountStatus = 'ACTIVE',
     }) => {
-      const username = profile.username.trim().toLowerCase()
-      const email = profile.email.trim().toLowerCase()
+      const username =
+        profile.username.trim().toLowerCase()
+
+      const email =
+        profile.email.trim().toLowerCase()
 
       if (
         data.users.some(
@@ -487,10 +688,16 @@ export function DataProvider({ children }) {
       }
 
       const profileId =
-        `${role === 'DRIVER' ? 'DR' : 'ADM'}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+        `${role === 'DRIVER' ? 'DR' : 'ADM'}-${crypto
+          .randomUUID()
+          .slice(0, 8)
+          .toUpperCase()}`
 
       const userId =
-        `USR-${role}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`
+        `USR-${role}-${crypto
+          .randomUUID()
+          .slice(0, 8)
+          .toUpperCase()}`
 
       const record = {
         ...profile,
@@ -500,14 +707,15 @@ export function DataProvider({ children }) {
         accountStatus,
       }
 
+      const collection =
+        role === 'DRIVER' ? 'drivers' : 'admins'
+
       setData(current => ({
         ...current,
 
-        [role === 'DRIVER' ? 'drivers' : 'admins']: [
+        [collection]: [
           record,
-          ...current[
-            role === 'DRIVER' ? 'drivers' : 'admins'
-          ],
+          ...current[collection],
         ],
 
         users: [
@@ -579,10 +787,16 @@ export function DataProvider({ children }) {
                   ...profile,
                   ...profileChanges,
                   ...(accountChanges.email
-                    ? { email: accountChanges.email }
+                    ? {
+                        email:
+                          accountChanges.email,
+                      }
                     : {}),
                   ...(accountChanges.username
-                    ? { username: accountChanges.username }
+                    ? {
+                        username:
+                          accountChanges.username,
+                      }
                     : {}),
                   ...(accountChanges.accountStatus
                     ? {
@@ -597,7 +811,10 @@ export function DataProvider({ children }) {
         const users = current.users.map(
           user =>
             user.userId === userId
-              ? { ...user, ...accountChanges }
+              ? {
+                  ...user,
+                  ...accountChanges,
+                }
               : user
         )
 
@@ -659,11 +876,12 @@ export function DataProvider({ children }) {
       return null
     },
 
-    // Add a single record.
     addRecord: (key, record) => {
       const id =
         record.id ||
-        `${key.slice(0, 2).toUpperCase()}-${Date.now().toString().slice(-5)}`
+        `${key.slice(0, 2).toUpperCase()}-${Date.now()
+          .toString()
+          .slice(-5)}`
 
       setData(current => ({
         ...current,
@@ -676,8 +894,6 @@ export function DataProvider({ children }) {
       return id
     },
 
-    // NEW: Add multiple records in one state update.
-    // Used for recurring staff transport schedules.
     addRecords: (key, records) => {
       if (
         !Array.isArray(records) ||
@@ -701,7 +917,10 @@ export function DataProvider({ children }) {
         [key]: current[key].map(
           record =>
             record.id === id
-              ? { ...record, ...changes }
+              ? {
+                  ...record,
+                  ...changes,
+                }
               : record
         ),
       })),
@@ -713,7 +932,12 @@ export function DataProvider({ children }) {
           record => record.id !== id
         ),
       })),
-  }), [data, session])
+  }), [
+    data,
+    session,
+    currentUser,
+    apiCredentials,
+  ])
 
   return (
     <DataContext.Provider value={api}>
