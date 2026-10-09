@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Ticket, CalendarDays, ArrowRight, Search, Megaphone, MapPin } from 'lucide-react'
 import { listPassengerBookings } from '../../services/bookingService'
 import { request } from '../../services/apiClient'
+import '../smartmoveDashboards.css'
 export default function ApiPassengerDashboard(){
  const [bookings,setBookings]=useState([]),[announcements,setAnnouncements]=useState([]),[error,setError]=useState('')
- useEffect(()=>{
-  let active=true
-  Promise.all([listPassengerBookings(),request('/announcements/public')]).then(([items,news])=>{
-   if(active){setBookings(items);setAnnouncements(Array.isArray(news)?news:news?.content||[])}
-  }).catch(e=>{if(active)setError(e.message)})
-  return()=>{active=false}
- },[])
+ useEffect(()=>{let active=true;Promise.all([listPassengerBookings(),request('/announcements/public')]).then(([items,news])=>{if(active){setBookings(Array.isArray(items)?items:items?.content||[]);setAnnouncements(Array.isArray(news)?news:news?.content||[])}}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[])
  const upcoming=bookings.filter(b=>!['CANCELLED','COMPLETED'].includes(String(b.status).toUpperCase()))
- return <div className="page-content"><div className="page-heading"><div><h1>My journeys</h1><p>Live booking records from Oracle and service alerts from MongoDB.</p></div></div>{error&&<p role="alert" className="auth-error">{error}</p>}<section className="portal-panel"><h2>Bookings: {bookings.length}</h2><p>Upcoming or active: {upcoming.length}</p><Link className="button button-primary" to="/passenger/search">Find a trip</Link><Link className="button button-outline" to="/passenger/bookings">My bookings</Link></section><section className="portal-panel"><h2>Recent bookings</h2>{bookings.slice(0,5).map(b=><article key={b.id}><strong>{b.bookingReference}</strong><p>{b.status} · {b.boardingStop} → {b.destinationStop}</p></article>)}</section><section className="portal-panel"><h2>Service notices</h2>{announcements.slice(0,3).map((a,i)=><article key={a.id??i}><strong>{a.title}</strong><p>{a.message}</p></article>)}</section></div>
+ const completed=bookings.filter(b=>String(b.status).toUpperCase()==='COMPLETED')
+ return <div className="page-content sm-dashboard"><section className="sm-hero"><div><span className="sm-eyebrow">SmartMove · Passenger portal</span><h1>Your next journey starts here.</h1><p>Find a ride, manage your bookings and stay informed about your travels.</p></div><div className="sm-hero-aside"><MapPin size={19}/> Travel made simple</div></section>
+ {error&&<p className="auth-error" role="alert">{error}</p>}
+ <div className="sm-dash-actions"><Link to="/passenger/search"><Search size={16}/> Find a trip <ArrowRight size={14}/></Link><Link to="/passenger/bookings"><Ticket size={16}/> My bookings</Link><Link to="/passenger/tickets">My tickets</Link><Link to="/passenger/tracking">Track journey</Link></div>
+ <div className="sm-metrics"><article className="sm-metric"><span className="sm-metric-icon"><Ticket size={22}/></span><strong>{bookings.length}</strong><span className="sm-metric-label">Total bookings</span></article><article className="sm-metric"><span className="sm-metric-icon"><CalendarDays size={22}/></span><strong>{upcoming.length}</strong><span className="sm-metric-label">Upcoming or active</span></article><article className="sm-metric"><span className="sm-metric-icon"><MapPin size={22}/></span><strong>{completed.length}</strong><span className="sm-metric-label">Completed journeys</span></article><article className="sm-metric"><span className="sm-metric-icon"><Megaphone size={22}/></span><strong>{announcements.length}</strong><span className="sm-metric-label">Service notices</span></article></div>
+ <div className="sm-dash-grid"><section className="sm-panel"><h2>Recent bookings</h2><p className="sm-panel-subtitle">Your latest reservations, directly from the booking service.</p>{bookings.length?bookings.slice(0,5).map((b,i)=><div className="sm-list-row" key={b.id??b.bookingId??i}><div><strong>{b.bookingReference||`Booking #${b.id??b.bookingId??i+1}`}</strong><small>{b.boardingStop||'Origin'} → {b.destinationStop||'Destination'}</small></div><span className="sm-pill">{b.status||'Booked'}</span></div>):<div className="sm-empty">No bookings yet. Search for a trip to begin.</div>}</section><section className="sm-panel"><h2>Service notices</h2><p className="sm-panel-subtitle">Latest announcements from SmartMove.</p>{announcements.length?announcements.slice(0,4).map((a,i)=><div className="sm-list-row" key={a.id??i}><div><strong>{a.title||'Service notice'}</strong><small>{a.message||a.content||''}</small></div></div>):<div className="sm-empty">No service notices at the moment.</div>}<div className="sm-dash-actions"><Link to="/passenger/announcements">All announcements <ArrowRight size={14}/></Link></div></section></div></div>
 }
