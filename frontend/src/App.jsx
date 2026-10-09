@@ -51,6 +51,9 @@ const ApiLiveFleet = lazy(() => import('./pages/admin/ApiLiveFleet'))
 const DriverDashboard = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverDashboard })))
 const DriverTrips = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverTrips })))
 const DriverTripDetails = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverTripDetails })))
+const ApiDriverSchedule = lazy(() => import('./pages/portal/ApiDriverExtras').then(m => ({default:m.ApiDriverSchedule})))
+const ApiDriverProfile = lazy(() => import('./pages/portal/ApiDriverExtras').then(m => ({default:m.ApiDriverProfile})))
+const ApiDriverAnnouncements = lazy(() => import('./pages/portal/ApiDriverExtras').then(m => ({default:m.ApiDriverAnnouncements})))
 const DriverSchedule = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverSchedule })))
 const DriverVehicle = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverVehicle })))
 const DriverStatusPage = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverStatusPage })))
@@ -117,12 +120,12 @@ function AppRoutes() {
       <Route index element={isApiMode() ? <ApiDriverTrips dashboard/> : <DriverDashboard/>}/>
       <Route path="trips" element={isApiMode() ? <ApiDriverTrips/> : <DriverTrips/>}/>
       <Route path="trip/:tripId" element={isApiMode() ? <ApiDriverTripDetails/> : <DriverTripDetails/>}/>
-      <Route path="schedule" element={<DriverSchedule/>}/>
+      <Route path="schedule" element={isApiMode() ? <ApiDriverSchedule/> : <DriverSchedule/>}/>
       <Route path="vehicle" element={<DriverVehicle/>}/>
       <Route path="trip-status" element={<DriverStatusPage/>}/>
       <Route path="issues" element={<DriverIssues/>}/>
-      <Route path="announcements" element={<DriverAnnouncements/>}/>
-      <Route path="profile" element={<DriverProfile/>}/>
+      <Route path="announcements" element={isApiMode() ? <ApiDriverAnnouncements/> : <DriverAnnouncements/>}/>
+      <Route path="profile" element={isApiMode() ? <ApiDriverProfile/> : <DriverProfile/>}/>
     </Route>
     <Route path="/admin" element={<GuardedPortal role="admin"><AdminShell/></GuardedPortal>}>
       <Route index element={<Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="reports" element={<Reports/>}/><Route path="custom-trip-requests" element={isApiMode() ? <ApiRequestAdmin kind="custom"/> : <CustomTripRequestsAdmin/>}/><Route path="staff-transport" element={isApiMode() ? <ApiRequestAdmin kind="staff"/> : <StaffTransportAdmin/>}/><Route path="live-fleet" element={isApiMode() ? <ApiLiveFleet/> : <LiveFleet/>}/><Route path="admin-management" element={<GuardedPortal role="admin" superAdminOnly>{isApiMode() ? <ApiAccounts kind="ADMIN"/> : <AdminManagement kind="ADMIN"/>}</GuardedPortal>}/>
