@@ -124,7 +124,7 @@ function AppRoutes() {
       <Route path="trip/:tripId" element={isApiMode() ? <ApiDriverTripDetails/> : <DriverTripDetails/>}/>
       <Route path="schedule" element={isApiMode() ? <ApiDriverSchedule/> : <DriverSchedule/>}/>
       <Route path="vehicle" element={<DriverVehicle/>}/>
-      <Route path="trip-status" element={<DriverStatusPage/>}/>
+      <Route path="trip-status" element={isApiMode() ? <ApiDriverTrips/> : <DriverStatusPage/>}/>
       <Route path="issues" element={<DriverIssues/>}/>
       <Route path="announcements" element={isApiMode() ? <ApiDriverAnnouncements/> : <DriverAnnouncements/>}/>
       <Route path="profile" element={isApiMode() ? <ApiDriverProfile/> : <DriverProfile/>}/>
