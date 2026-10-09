@@ -23,6 +23,11 @@ public class DriverController {
     return ResponseEntity.status(HttpStatus.CREATED).body(drivers.createDriver(
       new DriverService.CreateDriverRequest(input.name(), input.email(), input.phone(), input.licenseNumber(), input.licenseExpiry(), input.experienceYears())));
   }
+  @GetMapping("/me")
+  public DriverService.DriverProfile myProfile() {
+    currentUser.requireDriver();
+    return drivers.getDriverProfile(currentUser.getCurrentDriverId());
+  }
   @GetMapping
   public List<DriverService.DriverProfile> list() {
     currentUser.requireAdmin();
