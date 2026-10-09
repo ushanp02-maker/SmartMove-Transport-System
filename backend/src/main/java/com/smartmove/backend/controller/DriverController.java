@@ -28,6 +28,11 @@ public class DriverController {
     currentUser.requireDriver();
     return drivers.getDriverProfile(currentUser.getCurrentDriverId());
   }
+  @PutMapping("/{id}")
+  public DriverService.DriverProfile update(@PathVariable Long id, @RequestBody DriverInput input) {
+    currentUser.requireAdmin();
+    return drivers.updateDriver(id, new DriverService.UpdateDriverRequest(input.name(), input.phone(), input.licenseNumber(), input.licenseExpiry(), input.experienceYears()));
+  }
   @GetMapping
   public List<DriverService.DriverProfile> list() {
     currentUser.requireAdmin();
