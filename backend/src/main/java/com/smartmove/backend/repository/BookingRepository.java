@@ -2,126 +2,156 @@
 package com.smartmove.backend.repository;
 
 import com.smartmove.backend.entity.Booking;
+
 import jakarta.persistence.LockModeType;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
-public interface BookingRepository
-        extends JpaRepository<Booking, Long> {
+public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    // Passenger booking history
-    List<Booking> findByPassengerIdOrderByBookedAtDesc(
-            Long passengerId
-    );
+    // ==========================================
+    // BOOKING LOOKUPS
+    // ==========================================
 
-    // Bookings for a particular trip
-    List<Booking> findByTripIdOrderByBookedAtDesc(
-            Long tripId
-    );
-
-    // Find ticket using its booking reference
     Optional<Booking> findByBookingReference(
             String bookingReference
     );
 
-    // Check duplicate booking references
     boolean existsByBookingReference(
             String bookingReference
     );
 
-    // Admin: filter bookings by status
-    List<Booking> findByStatusIgnoreCaseOrderByBookedAtDesc(
-            String status
+    // ==========================================
+    // TRIP BOOKINGS
+    // ==========================================
+
+    List<Booking> findByTripId(
+            Long tripId
     );
 
-    // Passenger: bookings with a particular status
-    List<Booking> findByPassengerIdAndStatusIgnoreCaseOrderByBookedAtDesc(
+    boolean existsByTripId(
+            Long tripId
+    );
+
+    List<Booking> findByTripIdOrderByBookedAtDesc(
+            Long tripId
+    );
+
+    // ==========================================
+    // ACTIVE BOOKINGS FOR A TRIP
+    // ==========================================
+
+    @Query("""
+            SELECT b
+            FROM Booking b
+            WHERE b.trip.id = :tripId
+              AND UPPER(b.status) IN :statuses
+            ORDER BY b.bookedAt DESC
+            """)
+    List<Booking> findActiveBookingsForTrip(
+            @Param("tripId") Long tripId,
+            @Param("statuses") Set<String> statuses
+    );
+
+    // ==========================================
+    // PASSENGER BOOKING HISTORY
+    // ==========================================
+
+    List<Booking> findByPassengerIdOrderByBookedAtDesc(
+            Long passengerId
+    );
+
+    Page<Booking> findByPassengerIdOrderByBookedAtDesc(
+            Long passengerId,
+            Pageable pageable
+    );
+
+    List<Booking>
+    findByPassengerIdAndStatusIgnoreCaseOrderByBookedAtDesc(
             Long passengerId,
             String status
     );
 
-    // Admin: bookings made during a period
-    List<Booking> findByBookedAtBetweenOrderByBookedAtDesc(
-            LocalDateTime start,
-            LocalDateTime end
+    // ==========================================
+    // BOOKINGS BY STATUS
+    // ==========================================
+
+    List<Booking> findByStatusIgnoreCase(
+            String status
     );
 
-    // Count bookings belonging to a passenger
-    long countByPassengerId(Long passengerId);
+    Page<Booking> findByStatusIgnoreCase(
+            String status,
+            Pageable pageable
+    );
 
-    // Count bookings for a trip
-    long countByTripId(Long tripId);
+    // Missing method required by BookingService.java
+    List<Booking> findByStatusIgnoreCaseOrderByBookedAtDesc(
+            String status
+    );
 
-    // Calculate occupied seats on a particular journey segment.
-    //
-    // A booking overlaps the requested segment when:
-    // booking boarding order < requested destination order
-    // AND booking destination order > requested boarding order.
-    //
-    // Cancelled or expired bookings are excluded by the
-    // activeStatuses parameter.
+    long countByStatusIgnoreCase(
+            String status
+    );
+
+    // ==========================================
+    // BOOKING COUNTS
+    // ==========================================
+
+    long countByPassengerId(
+            Long passengerId
+    );
+
+    long countByTripId(
+            Long tripId
+    );
+
+    long countByTripIdAndStatusIgnoreCase(
+            Long tripId,
+            String status
+    );
+
+    // ==========================================
+    // SEAT OCCUPANCY BETWEEN ROUTE STOPS
+    // ==========================================
+
     @Query("""
-        SELECT COALESCE(SUM(b.seatCount), 0)
-        FROM Booking b
-        WHERE b.trip.id = :tripId
-          AND b.status IN :activeStatuses
-          AND b.boardingStop.stopOrder < :destinationOrder
-          AND b.destinationStop.stopOrder > :boardingOrder
-        """)
+            SELECT COALESCE(SUM(b.seatCount), 0)
+            FROM Booking b
+            WHERE b.trip.id = :tripId
+              AND b.status IN :statuses
+              AND b.boardingStop.stopOrder < :destinationOrder
+              AND b.destinationStop.stopOrder > :boardingOrder
+            """)
     Long countOccupiedSeatsBetweenStops(
             @Param("tripId") Long tripId,
             @Param("boardingOrder") Integer boardingOrder,
             @Param("destinationOrder") Integer destinationOrder,
-            @Param("activeStatuses")
-            Collection<String> activeStatuses
+            @Param("statuses") List<String> statuses
     );
 
-    // Retrieve all active bookings for a trip.
-    // Used for seat allocation, occupancy and reports.
-    @Query("""
-        SELECT b FROM Booking b
-        JOIN FETCH b.boardingStop
-        JOIN FETCH b.destinationStop
-        WHERE b.trip.id = :tripId
-          AND b.status IN :activeStatuses
-        ORDER BY b.boardingStop.stopOrder ASC
-        """)
-    List<Booking> findActiveBookingsForTrip(
-            @Param("tripId") Long tripId,
-            @Param("activeStatuses")
-            Collection<String> activeStatuses
-    );
+    // ==========================================
+    // LOCK BOOKING DURING STATE CHANGES
+    // ==========================================
 
-    // Lock an existing booking for payment or cancellation.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-        SELECT b FROM Booking b
-        WHERE b.id = :bookingId
-        """)
+            SELECT b
+            FROM Booking b
+            WHERE b.id = :bookingId
+            """)
     Optional<Booking> findByIdForUpdate(
             @Param("bookingId") Long bookingId
-    );
-
-    // Passenger travel history for coursework reporting.
-    @Query("""
-        SELECT b FROM Booking b
-        JOIN FETCH b.trip t
-        JOIN FETCH t.route
-        WHERE b.passenger.id = :passengerId
-          AND t.status = 'COMPLETED'
-          AND b.status = 'CONFIRMED'
-        ORDER BY t.departureTime DESC
-        """)
-    List<Booking> findPassengerTravelHistory(
-            @Param("passengerId") Long passengerId
     );
 }
