@@ -1,2 +1,4 @@
 import EntityPage from '../components/EntityPage'
-export default function Trips() { return <EntityPage entity="trips" /> }
+import ApiAdminEntity from '../components/ApiAdminEntity'
+import { isApiMode } from '../services/apiClient'
+export default function Trips() { return isApiMode() ? <ApiAdminEntity entity="trips" /> : <EntityPage entity="trips" /> }
