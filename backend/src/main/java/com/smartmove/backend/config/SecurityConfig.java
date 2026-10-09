@@ -451,6 +451,10 @@ public class SecurityConfig {
                         ).hasAnyRole(ADMIN_ROLES)
 
                         // ----------------------------------
+                        // DRIVER-REPORTED VEHICLE ISSUES
+                        .requestMatchers(HttpMethod.POST, "/api/driver-issues")
+                        .hasRole(DRIVER)
+
                         // MAINTENANCE
                         // ----------------------------------
 
