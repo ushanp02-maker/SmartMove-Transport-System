@@ -40,6 +40,8 @@ const SearchTrips = lazy(() => import('./pages/portal/PassengerPortal').then(mod
 const BookTicket = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.BookTicket })))
 const MyBookings = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.MyBookings })))
 const MyTickets = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.MyTickets })))
+const ApiPassengerPayments = lazy(() => import('./pages/portal/ApiPassengerAccount').then(m => ({default:m.ApiPassengerPayments})))
+const ApiPassengerProfile = lazy(() => import('./pages/portal/ApiPassengerAccount').then(m => ({default:m.ApiPassengerProfile})))
 const PassengerPayments = lazy(() => import('./pages/portal/PassengerPortal').then(module => ({ default: module.PassengerPayments })))
 const ApiPassengerReviews = lazy(() => import('./pages/portal/ApiPassengerExtras').then(m => ({default:m.ApiPassengerReviews})))
 const ApiPassengerAnnouncements = lazy(() => import('./pages/portal/ApiPassengerExtras').then(m => ({default:m.ApiPassengerAnnouncements})))
@@ -116,10 +118,10 @@ function AppRoutes() {
       <Route path="tracking" element={isApiMode() ? <ApiPassengerTracking/> : <PassengerTripTracking/>}/>
       <Route path="tracking/:tripId" element={isApiMode() ? <ApiPassengerTracking/> : <PassengerTripTracking/>}/>
       <Route path="tickets" element={isApiMode() ? <ApiMyTickets/> : <MyTickets/>}/>
-      <Route path="payments" element={<PassengerPayments/>}/>
+      <Route path="payments" element={isApiMode() ? <ApiPassengerPayments/> : <PassengerPayments/>}/>
       <Route path="reviews" element={isApiMode() ? <ApiPassengerReviews/> : <PassengerReviews/>}/>
       <Route path="announcements" element={isApiMode() ? <ApiPassengerAnnouncements/> : <PassengerAnnouncements/>}/>
-      <Route path="profile" element={<PassengerProfile/>}/>
+      <Route path="profile" element={isApiMode() ? <ApiPassengerProfile/> : <PassengerProfile/>}/>
     </Route>
     <Route path="/driver" element={<GuardedPortal role="driver"><PortalShell role="driver"/></GuardedPortal>}>
       <Route index element={isApiMode() ? <ApiDriverTrips dashboard/> : <DriverDashboard/>}/>
