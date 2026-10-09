@@ -2,6 +2,7 @@
 package com.smartmove.backend.controller;
 
 import com.smartmove.backend.service.BookingService;
+import com.smartmove.backend.service.CurrentUserService;
 import com.smartmove.backend.service.BookingService.BookingProfile;
 import com.smartmove.backend.service.BookingService.BookingQuote;
 import com.smartmove.backend.service.BookingService.BookingStatistics;
@@ -35,9 +36,11 @@ import java.util.Map;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final CurrentUserService currentUserService;
 
-    public BookingController(BookingService bookingService) {
+    public BookingController(BookingService bookingService, CurrentUserService currentUserService) {
         this.bookingService = bookingService;
+        this.currentUserService = currentUserService;
     }
 
     // ==========================================
@@ -169,7 +172,7 @@ public class BookingController {
     ) {
         return ResponseEntity.ok(
                 bookingService.getPassengerBookings(
-                        passengerId
+                        verifiedPassenger(passengerId)
                 )
         );
     }
@@ -185,7 +188,7 @@ public class BookingController {
     ) {
         return ResponseEntity.ok(
                 bookingService.getPassengerBookingsByStatus(
-                        passengerId,
+                        verifiedPassenger(passengerId),
                         status
                 )
         );
@@ -213,9 +216,7 @@ public class BookingController {
             @PathVariable @NotBlank String reference
     ) {
         return ResponseEntity.ok(
-                bookingService.getBookingByReference(
-                        reference
-                )
+                ownedBooking(bookingService.getBookingByReference(reference))
         );
     }
 
@@ -228,9 +229,7 @@ public class BookingController {
             @PathVariable @Positive Long bookingId
     ) {
         return ResponseEntity.ok(
-                bookingService.getBookingProfile(
-                        bookingId
-                )
+                ownedBooking(bookingService.getBookingProfile(bookingId))
         );
     }
 
@@ -244,7 +243,7 @@ public class BookingController {
     ) {
         BookingProfile booking = bookingService.createBooking(
                 new CreateBookingRequest(
-                        request.passengerId(),
+                        verifiedPassenger(request.passengerId()),
                         request.tripId(),
                         request.boardingStopId(),
                         request.destinationStopId(),
@@ -267,7 +266,7 @@ public class BookingController {
     ) {
         return ResponseEntity.ok(
                 bookingService.confirmBooking(
-                        bookingId
+                        verifiedBookingId(bookingId)
                 )
         );
     }
@@ -282,9 +281,24 @@ public class BookingController {
     ) {
         return ResponseEntity.ok(
                 bookingService.cancelBooking(
-                        bookingId
+                        verifiedBookingId(bookingId)
                 )
         );
+    }
+
+    private Long verifiedPassenger(Long passengerId) {
+        currentUserService.requirePassengerOwnership(passengerId);
+        return passengerId;
+    }
+
+    private BookingProfile ownedBooking(BookingProfile booking) {
+        currentUserService.requirePassengerOwnership(booking.passengerId());
+        return booking;
+    }
+
+    private Long verifiedBookingId(Long bookingId) {
+        ownedBooking(bookingService.getBookingProfile(bookingId));
+        return bookingId;
     }
 
     // ==========================================
