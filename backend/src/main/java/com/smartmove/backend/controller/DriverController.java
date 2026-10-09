@@ -33,6 +33,11 @@ public class DriverController {
     currentUser.requireAdmin();
     return drivers.updateDriver(id, new DriverService.UpdateDriverRequest(input.name(), input.phone(), input.licenseNumber(), input.licenseExpiry(), input.experienceYears()));
   }
+  @PatchMapping("/{id}/status")
+  public DriverService.DriverProfile changeStatus(@PathVariable Long id, @RequestBody java.util.Map<String,String> input) {
+    currentUser.requireAdmin();
+    return drivers.updateDriverStatus(id, input.get("newStatus"));
+  }
   @GetMapping
   public List<DriverService.DriverProfile> list() {
     currentUser.requireAdmin();
