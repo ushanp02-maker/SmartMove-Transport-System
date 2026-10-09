@@ -1,2 +1,4 @@
 import AccountManagement from '../components/AccountManagement'
-export default function Drivers() { return <AccountManagement kind="DRIVER" /> }
+import ApiAccounts from '../components/ApiAccounts'
+import { isApiMode } from '../services/apiClient'
+export default function Drivers() { return isApiMode() ? <ApiAccounts kind="DRIVER" /> : <AccountManagement kind="DRIVER" /> }
