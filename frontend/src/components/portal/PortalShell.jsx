@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
-import { BusFront, LayoutDashboard, Search, Ticket, Wallet, Star, Megaphone, UserRound, CalendarDays, ClipboardList, CircleAlert, Menu, X, LogOut, ChevronDown, Route, Clock3, MapPin, Navigation } from 'lucide-react'
+import { BusFront, LayoutDashboard, Search, Ticket, Wallet, Star, Megaphone, UserRound, CalendarDays, ClipboardList, CircleAlert, Menu, X, LogOut, ChevronDown, Route, Clock3, MapPin, Navigation, Bell } from 'lucide-react'
 import { useAppData } from '../../services/useAppData'
 
 const passengerLinks = [
@@ -13,6 +13,7 @@ const passengerLinks = [
   { label: 'Payments', to: '/passenger/payments', icon: Wallet },
   { label: 'Reviews', to: '/passenger/reviews', icon: Star },
   { label: 'Announcements', to: '/passenger/announcements', icon: Megaphone },
+  { label: 'Notifications', to: '/passenger/notifications', icon: Bell },
   { label: 'My profile', to: '/passenger/profile', icon: UserRound },
 ]
 const driverLinks = [
@@ -23,6 +24,7 @@ const driverLinks = [
   { label: 'My vehicle', to: '/driver/vehicle', icon: BusFront },
   { label: 'Report an issue', to: '/driver/issues', icon: CircleAlert },
   { label: 'Announcements', to: '/driver/announcements', icon: Megaphone },
+  { label: 'Notifications', to: '/driver/notifications', icon: Bell },
   { label: 'My profile', to: '/driver/profile', icon: UserRound },
 ]
 
