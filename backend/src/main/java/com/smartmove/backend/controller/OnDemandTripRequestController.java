@@ -433,7 +433,7 @@ public class OnDemandTripRequestController {
                 requestService.assignTrip(
                         requestId,
                         new AssignTripRequest(
-                                request.tripId()
+                                request.tripId(), request.vehicleId(), request.driverId()
                         )
                 )
         );
@@ -533,7 +533,7 @@ public class OnDemandTripRequestController {
             Integer passengerCount,
 
             @Pattern(
-                    regexp = "(?i)STANDARD|PREMIUM|STAFF|OTHER"
+                    regexp = "(?i)STANDARD|STAFF|CUSTOM"
             )
             String serviceType,
 
@@ -574,9 +574,9 @@ public class OnDemandTripRequestController {
 
     public record AssignmentPayload(
 
-            @NotNull
-            @Positive
-            Long tripId
+            @Positive Long tripId,
+            @Positive Long vehicleId,
+            @Positive Long driverId
 
     ) {}
 
