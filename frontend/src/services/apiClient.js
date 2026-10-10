@@ -87,7 +87,7 @@ export async function request(path, options = {}) {
   const headers = {
     Accept: 'application/json',
     ...buildAuthorizationHeader(),
-    ...(options.body
+    ...(options.body && !(options.body instanceof FormData)
       ? { 'Content-Type': 'application/json' }
       : {}),
     ...options.headers,
