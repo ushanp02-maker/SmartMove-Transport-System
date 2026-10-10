@@ -303,8 +303,8 @@ public class RouteService {
                                     routeId
                             );
 
-            if (stops.isEmpty()) {
-                addEndpointStops(route);
+            if (stops.size() < 2) {
+                repairMissingEndpointStops(route, stops);
                 stops = stopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
             }
             if (stops.size() < 2) {
@@ -348,6 +348,52 @@ public class RouteService {
         destination.setDistanceFromStartKm(route.getDistanceKm());
         destination.setMinutesFromStart(route.getDurationMinutes());
         stopRepository.save(destination);
+    }
+
+    /**
+     * Repair older routes that were saved with zero or one stop record.
+     * Keep existing stops and add only missing endpoints; never duplicate
+     * an existing stop or overwrite its coordinates.
+     */
+    private void repairMissingEndpointStops(Route route, List<RouteStop> existing) {
+        if (existing.isEmpty()) {
+            addEndpointStops(route);
+            return;
+        }
+        if (existing.size() >= 2) {
+            return;
+        }
+        RouteStop only = existing.get(0);
+        String originName = route.getOrigin().trim();
+        String destinationName = route.getDestination().trim();
+        String existingName = only.getStopName() == null ? "" : only.getStopName().trim();
+        boolean isOrigin = existingName.equalsIgnoreCase(originName);
+        boolean isDestination = existingName.equalsIgnoreCase(destinationName);
+        if (!isOrigin && !isDestination) {
+            throw badRequest("Existing route stop does not match the origin or destination. Review route stops before activation");
+        }
+        RouteStop missing = new RouteStop();
+        missing.setRoute(route);
+        if (isOrigin) {
+            only.setStopOrder(0);
+            only.setDistanceFromStartKm(BigDecimal.ZERO);
+            only.setMinutesFromStart(0);
+            stopRepository.save(only);
+            missing.setStopOrder(1);
+            missing.setStopName(destinationName);
+            missing.setDistanceFromStartKm(route.getDistanceKm());
+            missing.setMinutesFromStart(route.getDurationMinutes());
+        } else {
+            only.setStopOrder(1);
+            only.setDistanceFromStartKm(route.getDistanceKm());
+            only.setMinutesFromStart(route.getDurationMinutes());
+            stopRepository.save(only);
+            missing.setStopOrder(0);
+            missing.setStopName(originName);
+            missing.setDistanceFromStartKm(BigDecimal.ZERO);
+            missing.setMinutesFromStart(0);
+        }
+        stopRepository.save(missing);
     }
 
     // ==========================================
