@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, BusFront, Users, Route, Navigation, ContactRound, TicketCheck, Wallet, Wrench, Star, Megaphone, ChartNoAxesCombined, X, UserRoundCog, LogOut, MapPin, BriefcaseBusiness } from 'lucide-react'
+import { LayoutDashboard, BusFront, Users, Route, Navigation, ContactRound, TicketCheck, Wallet, Wrench, Star, Megaphone, ChartNoAxesCombined, X, UserRoundCog, LogOut, MapPin, BriefcaseBusiness, Bell } from 'lucide-react'
 import { useAppData } from '../services/useAppData'
 
 const links = [
@@ -10,7 +10,7 @@ const links = [
   { label: 'CUSTOMER & SALES', section: true },
   { label: 'Passengers', to: '/admin/passengers', icon: ContactRound }, { label: 'Bookings', to: '/admin/bookings', icon: TicketCheck }, { label: 'Payments', to: '/admin/payments', icon: Wallet },
   { label: 'SERVICE & INSIGHTS', section: true },
-  { label: 'Live Fleet Tracking', to: '/admin/live-fleet', icon: MapPin }, { label: 'Maintenance', to: '/admin/maintenance', icon: Wrench }, { label: 'Reviews', to: '/admin/reviews', icon: Star }, { label: 'Announcements', to: '/admin/announcements', icon: Megaphone }, { label: 'Reports', to: '/admin/reports', icon: ChartNoAxesCombined },
+  { label: 'Live Fleet Tracking', to: '/admin/live-fleet', icon: MapPin }, { label: 'Maintenance', to: '/admin/maintenance', icon: Wrench }, { label: 'Reviews', to: '/admin/reviews', icon: Star }, { label: 'Announcements', to: '/admin/announcements', icon: Megaphone }, { label: 'Notifications', to: '/admin/notifications', icon: Bell }, { label: 'Reports', to: '/admin/reports', icon: ChartNoAxesCombined },
 ]
 
 export default function Sidebar({ open, onClose }) {
