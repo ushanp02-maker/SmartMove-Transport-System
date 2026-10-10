@@ -918,3 +918,29 @@ tbody tr:hover { background: #fcfdfb; }
 .sm-row-details{display:inline-block;position:relative;margin-left:6px}.sm-row-details summary{list-style:none;cursor:pointer;border:1px solid #e3e9e4;border-radius:7px;padding:7px 11px;font-size:11px}.sm-row-details summary::-webkit-details-marker{display:none}.sm-detail-popover{position:absolute;right:0;top:calc(100% + 5px);width:300px;max-height:290px;overflow:auto;background:white;border:1px solid #dfe8e1;border-radius:9px;box-shadow:0 12px 36px #112a2040;padding:12px;z-index:12;white-space:normal}.sm-detail-popover p{font-size:11px;line-height:1.5;margin:5px 0;overflow-wrap:anywhere}
 
 .sm-route-preview{margin:16px 0;border:1px solid #e6eee8;border-radius:12px;padding:12px;background:#fbfdfb}.sm-route-preview-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.sm-route-preview-heading strong{font-size:14px;color:#174a35}.sm-route-preview-heading span{font-size:12px;color:#60796a}.sm-map-note{font-size:11px;color:#72877b;margin:9px 0 2px;line-height:1.5}
+
+
+/* SmartMove passenger payment workspace: existing forest-green identity */
+.portal-payments-page { display:grid; gap:20px; width:100%; }
+.portal-payment-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.portal-payment-summary > div { background:#fff; border:1px solid #e3e9e2; border-radius:14px; padding:22px; box-shadow:0 6px 22px rgba(15,55,39,.035); display:flex; flex-direction:column; gap:10px; }
+.portal-payment-summary small { color:#71867b; font-size:13px; }
+.portal-payment-summary strong { color:#103f2e; font-size:30px; line-height:1; }
+.portal-payments-page .portal-panel { border:1px solid #e3e9e2; border-radius:14px; padding:24px; background:#fff; box-shadow:0 6px 22px rgba(15,55,39,.035); }
+.portal-payment-toolbar { display:flex; justify-content:space-between; align-items:start; gap:16px; }
+.portal-payment-toolbar h2,.portal-payments-page .portal-panel h2 { margin:0 0 8px; font-size:20px; color:#103f2e; }
+.portal-payment-toolbar p,.portal-payments-page .portal-panel > p { color:#71867b; margin:0 0 16px; }
+.portal-payment-filters { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
+.portal-payment-filters button { cursor:pointer; background:#f6f8f5; color:#436457; border:1px solid #e3e9e2; padding:9px 13px; border-radius:8px; font:inherit; font-size:13px; }
+.portal-payment-filters button.selected { background:#174d38; color:white; border-color:#174d38; }
+.portal-payment-table-wrap { overflow-x:auto; }
+.portal-payment-table { width:100%; border-collapse:collapse; text-align:left; min-width:610px; }
+.portal-payment-table th { background:#f5f8f5; color:#536d60; font-size:12px; font-weight:700; padding:14px; }
+.portal-payment-table td { border-bottom:1px solid #edf0ec; padding:17px 14px; color:#294638; font-size:13px; }
+.portal-payment-table td strong { color:#143d2e; }
+.portal-payment-table td a { color:#126b4c; font-weight:700; }
+.portal-payment-status { display:inline-block; border-radius:7px; padding:6px 10px; background:#eaf1ed; color:#2a6046; font-size:11px; font-weight:800; white-space:nowrap; }
+.portal-payment-status.pending { background:#fff0d7; color:#9a5c0a; }
+.portal-payment-status.completed,.portal-payment-status.paid,.portal-payment-status.success { background:#dcf4e5; color:#167346; }
+.portal-payment-status.refunded,.portal-payment-status.failed { background:#fce8e8; color:#9b3939; }
+@media(max-width:750px) { .portal-payment-summary { grid-template-columns:1fr; } .portal-payments-page .portal-panel { padding:16px; } }
