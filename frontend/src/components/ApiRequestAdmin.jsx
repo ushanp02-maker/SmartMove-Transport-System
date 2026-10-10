@@ -17,6 +17,10 @@ export default function ApiRequestAdmin({ kind }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [trips, setTrips] = useState([])
+  const [vehicles, setVehicles] = useState([])
+  const [drivers, setDrivers] = useState([])
+  const [selectedVehicleId, setSelectedVehicleId] = useState('')
+  const [selectedDriverId, setSelectedDriverId] = useState('')
   const [assignment, setAssignment] = useState(null)
   const [selectedTripId, setSelectedTripId] = useState('')
   const [tripError, setTripError] = useState('')
@@ -27,10 +31,15 @@ export default function ApiRequestAdmin({ kind }) {
     return () => { live = false }
   }, [config.base, refresh])
   const openAssignment = async item => {
-    setAssignment(item); setSelectedTripId(''); setTripError(''); setBusy(true)
+    setAssignment(item); setSelectedTripId(''); setSelectedVehicleId(''); setSelectedDriverId(''); setTripError(''); setBusy(true)
     try {
-      const data = await request('/trips')
-      setTrips(rowsOf(data))
+      if (kind === 'custom') {
+        const [vehicleData, driverData, tripData] = await Promise.all([request('/vehicles'), request('/drivers'), request('/trips')])
+        setVehicles(rowsOf(vehicleData)); setDrivers(rowsOf(driverData)); setTrips(rowsOf(tripData))
+      } else {
+        const data = await request('/trips')
+        setTrips(rowsOf(data))
+      }
     } catch (err) { setTripError(err.message) }
     finally { setBusy(false) }
   }
@@ -67,8 +76,13 @@ export default function ApiRequestAdmin({ kind }) {
       if (!reason?.trim()) return
       body = { reviewNotes: reason.trim() }
     } else if (action === 'assign') {
-      if (!Number.isSafeInteger(Number(chosenTripId)) || Number(chosenTripId) < 1) return setError('Select an available trip.')
-      body = { tripId: Number(chosenTripId) }
+      if (kind === 'custom') {
+        if (!selectedVehicleId || !selectedDriverId) return setError('Select an available vehicle and driver.')
+        body = { vehicleId: Number(selectedVehicleId), driverId: Number(selectedDriverId) }
+      } else {
+        if (!Number.isSafeInteger(Number(chosenTripId)) || Number(chosenTripId) < 1) return setError('Select an available trip.')
+        body = { tripId: Number(chosenTripId) }
+      }
     } else if (action === 'cancel') {
       const reason = window.prompt('Cancellation reason')
       if (!reason?.trim()) return
@@ -81,6 +95,12 @@ export default function ApiRequestAdmin({ kind }) {
     } catch (err) { setError(err.message) }
     finally { setBusy(false) }
   }
+  const customVehicleOptions = vehicles.filter(vehicle => {
+    if (String(vehicle.status).toUpperCase() !== 'AVAILABLE') return false
+    if (Number(vehicle.seatingCapacity ?? vehicle.seats ?? 0) < Number(assignment?.passengerCount ?? 1)) return false
+    return !trips.some(trip => String(trip.vehicleId) === String(vehicle.id) && !['CANCELLED','COMPLETED'].includes(String(trip.status).toUpperCase()) && assignment?.requestedPickupTime && new Date(trip.departureTime) < new Date(assignment.requestedPickupTime).getTime() + 60*60000 && new Date(trip.arrivalTime) > new Date(assignment.requestedPickupTime))
+  })
+  const customDriverOptions = drivers.filter(driver => String(driver.status).toUpperCase() === 'AVAILABLE' && !trips.some(trip => String(trip.driverId) === String(driver.id) && !['CANCELLED','COMPLETED'].includes(String(trip.status).toUpperCase()) && assignment?.requestedPickupTime && new Date(trip.departureTime) < new Date(assignment.requestedPickupTime).getTime() + 60*60000 && new Date(trip.arrivalTime) > new Date(assignment.requestedPickupTime)))
   const visible = rows.filter(item => (filter === 'ALL' || item.status === filter) && JSON.stringify(item).toLowerCase().includes(search.toLowerCase()))
   const pageSize = 7, pages = Math.max(1,Math.ceil(visible.length/pageSize)), currentPage = Math.min(page,pages)
   const shown = visible.slice((currentPage-1)*pageSize,currentPage*pageSize)
@@ -92,8 +112,8 @@ export default function ApiRequestAdmin({ kind }) {
     <div className="sm-summary-grid">{summary.map(([label,value],i)=><div className="sm-summary-card" key={label}><span className={'sm-summary-icon sm-summary-icon-'+i}>{['▦','◉','✓','◇'][i]}</span><div><strong>{value}</strong><small>{label}</small></div></div>)}</div>
     <div className="sm-table-card"><div className="sm-table-toolbar"><div className="sm-search-wrap"><span>⌕</span><input aria-label="Search requests" placeholder="Search requests..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}}/></div><div className="sm-toolbar-actions"><select aria-label="Filter requests" value={filter} onChange={e=>{setFilter(e.target.value);setPage(1)}}>{['ALL','PENDING','APPROVED','ASSIGNED','IN_PROGRESS','COMPLETED','REJECTED','CANCELLED'].map(status=><option key={status}>{status}</option>)}</select></div></div>
     {error&&<p className="auth-error" role="alert">{error}</p>}
-    <div className="sm-table-scroll"><table className="data-table sm-refined-table"><thead><tr><th>ID</th><th>{kind==='staff'?'Employee':'Passenger'}</th><th>Pickup location</th><th>Destination</th><th>Requested date</th><th>Status</th><th>Actions</th></tr></thead><tbody>{shown.map(item=>{const id=item.id??item.requestId;return <tr key={id}><td>{id}</td><td>{detail(item,['passengerName','employeeName','staffName','name','passengerId','employeeId'])}</td><td>{detail(item,['pickupAddress','pickupLocation','origin','pickup'])}</td><td>{detail(item,['destinationAddress','destination','dropoffLocation'])}</td><td>{detail(item,['requestedDate','travelDate','tripDate','createdAt'])}</td><td><span className={'sm-status-pill sm-status-'+String(item.status||'').toLowerCase()}>{show(item.status)}</span></td><td><div className="sm-actions">{(item.status==='PENDING'?['approve','reject']:item.status==='APPROVED'?['assign','cancel']:item.status==='ASSIGNED'?['complete','cancel']:[]).map(action=><button type="button" className="button button-outline" disabled={busy} key={action} onClick={()=>action === 'assign' ? openAssignment(item) : act(item,action)}>{action}</button>)}<details className="sm-row-details"><summary>View</summary><div className="sm-detail-popover">{Object.entries(item).filter(([key])=>!['id','requestId'].includes(key)).map(([key,value])=><p key={key}><strong>{key}:</strong> {show(value)}</p>)}</div></details></div></td></tr>})}</tbody></table></div>
-    {assignment && <div className="modal-backdrop"><section className="record-modal sm-refined-modal" role="dialog" aria-modal="true" aria-label="Assign scheduled trip"><div className="modal-heading"><div><span className="sm-breadcrumb">Transport requests / Assignment</span><h2>Assign a scheduled trip</h2></div><button type="button" className="button button-outline" onClick={()=>setAssignment(null)}>Close</button></div><p className="sm-modal-intro">Choose an eligible scheduled trip for request #{assignment.id ?? assignment.requestId}. Trips must meet the request's time, capacity and route requirements.</p>{tripError && <p className="auth-error" role="alert">{tripError}</p>}<label>Available scheduled trips<select value={selectedTripId} onChange={e=>setSelectedTripId(e.target.value)}><option value="">Select an eligible trip</option>{availableTrips.map(trip=><option key={trip.id} value={trip.id}>#{trip.id} — {trip.routeName || trip.origin + ' → ' + trip.destination} — {String(trip.departureTime).replace('T',' ')} — {trip.vehicleRegistration || 'Vehicle #'+trip.vehicleId} — {trip.driverName || 'Driver #'+trip.driverId}</option>)}</select></label>{!busy && !availableTrips.length && <p className="sm-empty">No eligible scheduled trips found. Create a trip with the matching route, date, time, and enough seats in Trip scheduling first.</p>}<div className="sm-form-footer"><button type="button" className="button button-outline" onClick={()=>setAssignment(null)}>Cancel</button><button type="button" className="button button-primary" disabled={busy || !selectedTripId} onClick={()=>act(assignment,'assign',selectedTripId)}>{busy ? 'Assigning...' : 'Assign selected trip'}</button></div></section></div>}
+    <div className="sm-table-scroll"><table className="data-table sm-refined-table"><thead><tr><th>ID</th><th>{kind==='staff'?'Employee':'Passenger'}</th><th>Pickup location</th><th>Destination</th><th>Requested date</th>{kind==='custom'&&<th>Seats</th>}<th>Status</th><th>Actions</th></tr></thead><tbody>{shown.map(item=>{const id=item.id??item.requestId;return <tr key={id}><td>{id}</td><td>{detail(item,['passengerName','employeeName','staffName','name','passengerId','employeeId'])}</td><td>{detail(item,['pickupAddress','pickupLocation','origin','pickup'])}</td><td>{detail(item,['destinationAddress','destination','dropoffLocation'])}</td><td>{detail(item,['requestedPickupTime','requestedDate','travelDate','tripDate','createdAt'])}</td>{kind==='custom'&&<td>{item.passengerCount ?? '—'}</td>}<td><span className={'sm-status-pill sm-status-'+String(item.status||'').toLowerCase()}>{show(item.status)}</span></td><td><div className="sm-actions">{(item.status==='PENDING'?['approve','reject']:item.status==='APPROVED'?['assign','cancel']:item.status==='ASSIGNED'?['complete','cancel']:[]).map(action=><button type="button" className="button button-outline" disabled={busy} key={action} onClick={()=>action === 'assign' ? openAssignment(item) : act(item,action)}>{action}</button>)}<details className="sm-row-details"><summary>View</summary><div className="sm-detail-popover">{Object.entries(item).filter(([key])=>!['id','requestId'].includes(key)).map(([key,value])=><p key={key}><strong>{key}:</strong> {show(value)}</p>)}</div></details></div></td></tr>})}</tbody></table></div>
+    {assignment && <div className="modal-backdrop"><section className="record-modal sm-refined-modal" role="dialog" aria-modal="true" aria-label="Assign scheduled trip"><div className="modal-heading"><div><span className="sm-breadcrumb">Transport requests / Assignment</span><h2>{kind === 'custom' ? 'Arrange custom transport' : 'Assign a scheduled trip'}</h2></div><button type="button" className="button button-outline" onClick={()=>setAssignment(null)}>Close</button></div><p className="sm-modal-intro">{kind === 'custom' ? 'Choose an available driver and a vehicle with enough seats. A dedicated CUSTOM trip will be created.' : 'Choose an eligible scheduled trip. Trips must meet the request time, capacity and route requirements.'}</p>{tripError && <p className="auth-error" role="alert">{tripError}</p>}{kind === 'custom' ? <><p><strong>Journey:</strong> {assignment.pickupAddress} → {assignment.destinationAddress}</p><p><strong>Pickup:</strong> {String(assignment.requestedPickupTime || '').replace('T',' ')} · <strong>Seats required:</strong> {assignment.passengerCount}</p><label>Available vehicles<select value={selectedVehicleId} onChange={e=>setSelectedVehicleId(e.target.value)}><option value="">Select vehicle</option>{customVehicleOptions.map(vehicle=><option key={vehicle.id} value={vehicle.id}>{vehicle.vehicleName || vehicle.name || vehicle.registrationNumber || 'Vehicle'} — {vehicle.registrationNumber || 'ID '+vehicle.id} — {vehicle.seatingCapacity ?? vehicle.seats} seats</option>)}</select></label><label>Available drivers<select value={selectedDriverId} onChange={e=>setSelectedDriverId(e.target.value)}><option value="">Select driver</option>{customDriverOptions.map(driver=><option key={driver.id} value={driver.id}>{driver.name || driver.fullName || 'Driver'} — ID {driver.id}</option>)}</select></label>{(!customVehicleOptions.length || !customDriverOptions.length)&&<p className="sm-empty">No suitable available vehicle or driver for this time. Check resource status and existing trip assignments.</p>}</> : <><label>Available scheduled trips<select value={selectedTripId} onChange={e=>setSelectedTripId(e.target.value)}><option value="">Select an eligible trip</option>{availableTrips.map(trip=><option key={trip.id} value={trip.id}>#{trip.id} — {trip.routeName || trip.origin + ' → ' + trip.destination} — {String(trip.departureTime).replace('T',' ')} — {trip.vehicleRegistration || 'Vehicle #'+trip.vehicleId} — {trip.driverName || 'Driver #'+trip.driverId}</option>)}</select></label>{!busy && !availableTrips.length && <p className="sm-empty">No eligible scheduled trips found. Create a trip with the matching route, date, time, and enough seats in Trip scheduling first.</p>}</>}<div className="sm-form-footer"><button type="button" className="button button-outline" onClick={()=>setAssignment(null)}>Cancel</button><button type="button" className="button button-primary" disabled={busy || (kind === 'custom' ? !selectedVehicleId || !selectedDriverId : !selectedTripId)} onClick={()=>act(assignment,'assign',selectedTripId)}>{busy ? 'Assigning...' : kind === 'custom' ? 'Create and assign custom trip' : 'Assign selected trip'}</button></div></section></div>}
     {!visible.length&&<p className="sm-empty">No requests match this filter.</p>}
     <div className="sm-table-footer"><span>Showing {visible.length?(currentPage-1)*pageSize+1:0} to {Math.min(currentPage*pageSize,visible.length)} of {visible.length} requests</span><div className="sm-pagination"><button disabled={currentPage===1} onClick={()=>setPage(n=>Math.max(1,n-1))}>‹</button><span>{currentPage} / {pages}</span><button disabled={currentPage===pages} onClick={()=>setPage(n=>Math.min(pages,n+1))}>›</button></div></div></div>
   </section>
