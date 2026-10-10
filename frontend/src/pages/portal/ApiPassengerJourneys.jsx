@@ -6,6 +6,7 @@ import { createBooking, getBookingQuote, getSeatAvailability, listPassengerBooki
 import { useAppData } from '../../services/useAppData'
 import { formatLkr } from '../../services/formatters'
 import RouteMapPreview from '../../components/RouteMapPreview'
+import './smartmove-journey.css'
 
 const dateOf = value => String(value || '').slice(0, 10)
 const timeOf = value => String(value || '').slice(11, 16)
