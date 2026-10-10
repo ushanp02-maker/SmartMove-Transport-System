@@ -5,7 +5,6 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.function.Consumer;
 
 /** Calls Oracle SYS_REFCURSOR PL/SQL procedures; does not recalculate report data in Java. */
 @Service
@@ -43,10 +42,10 @@ public class PlsqlReportService {
         try (Connection conn = dataSource.getConnection();
              CallableStatement call = conn.prepareCall("{call sm_reports." + procedure + "(" + placeholders + ")}")) {
             if (dateRange) {
-                call.setDate(1, Date.valueOf(start));
-                call.setDate(2, Date.valueOf(end));
+                call.setDate(1, java.sql.Date.valueOf(start));
+                call.setDate(2, java.sql.Date.valueOf(end));
             } else if (oneDate) {
-                call.setDate(1, Date.valueOf(end == null ? LocalDate.now().plusDays(30) : end));
+                call.setDate(1, java.sql.Date.valueOf(end == null ? LocalDate.now().plusDays(30) : end));
             } else if (oneId) {
                 call.setLong(1, passengerId);
             }
@@ -60,7 +59,7 @@ public class PlsqlReportService {
                     for (int i = 1; i <= md.getColumnCount(); i++) {
                         Object value = rs.getObject(i);
                         if (value instanceof Timestamp ts) value = ts.toLocalDateTime();
-                        if (value instanceof Date date) value = date.toLocalDate();
+                        if (value instanceof java.sql.Date date) value = date.toLocalDate();
                         row.put(md.getColumnLabel(i).toLowerCase(Locale.ROOT), value);
                     }
                     rows.add(row);
