@@ -85,7 +85,7 @@ CREATE OR REPLACE PACKAGE BODY sm_reports AS
       COUNT(t.id) assigned_trips,
       COUNT(CASE WHEN t.status='COMPLETED' THEN 1 END) completed_trips,
       COUNT(CASE WHEN t.status='CANCELLED' THEN 1 END) cancelled_trips,
-      NVL(SUM((SELECT COUNT(*) FROM bookings b WHERE b.trip_id=t.id AND b.status='CONFIRMED')),0) confirmed_bookings
+      (SELECT COUNT(*) FROM bookings b JOIN trips t2 ON t2.id=b.trip_id WHERE t2.driver_id=d.id AND b.status='CONFIRMED') confirmed_bookings
       FROM drivers d LEFT JOIN trips t ON t.driver_id=d.id
       GROUP BY d.id,d.name,d.status ORDER BY completed_trips DESC,d.name;
   END;
