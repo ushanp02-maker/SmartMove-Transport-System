@@ -301,6 +301,8 @@ public class SecurityConfig {
                         ).hasAnyRole(ADMIN_ROLES)
 
                         // ----------------------------------
+                        .requestMatchers("/api/notifications/**").hasAnyRole(ALL_ROLES)
+
                         // CURRENT USER
                         // ----------------------------------
 
