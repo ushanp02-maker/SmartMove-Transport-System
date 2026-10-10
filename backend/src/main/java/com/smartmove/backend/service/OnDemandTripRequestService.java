@@ -4,11 +4,13 @@ package com.smartmove.backend.service;
 import com.smartmove.backend.entity.OnDemandTripRequest;
 import com.smartmove.backend.entity.Passenger;
 import com.smartmove.backend.entity.Trip;
+import com.smartmove.backend.entity.Route;
 import com.smartmove.backend.entity.UserAccount;
 
 import com.smartmove.backend.repository.OnDemandTripRequestRepository;
 import com.smartmove.backend.repository.PassengerRepository;
 import com.smartmove.backend.repository.TripRepository;
+import com.smartmove.backend.repository.RouteRepository;
 import com.smartmove.backend.repository.UserAccountRepository;
 import com.smartmove.backend.repository.StaffTransportRequestRepository;
 import com.smartmove.backend.repository.BookingRepository;
@@ -55,6 +57,8 @@ public class OnDemandTripRequestService {
     private final StaffTransportRequestRepository staffRequestRepository;
     private final BookingRepository bookingRepository;
     private final CurrentUserService currentUserService;
+    private final RouteRepository routeRepository;
+    private final TripService tripService;
 
     public OnDemandTripRequestService(
             OnDemandTripRequestRepository requestRepository,
@@ -63,7 +67,9 @@ public class OnDemandTripRequestService {
             UserAccountRepository userAccountRepository,
             StaffTransportRequestRepository staffRequestRepository,
             BookingRepository bookingRepository,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            RouteRepository routeRepository,
+            TripService tripService
     ) {
         this.requestRepository = requestRepository;
         this.passengerRepository = passengerRepository;
@@ -72,6 +78,8 @@ public class OnDemandTripRequestService {
         this.staffRequestRepository = staffRequestRepository;
         this.bookingRepository = bookingRepository;
         this.currentUserService = currentUserService;
+        this.routeRepository = routeRepository;
+        this.tripService = tripService;
     }
 
     // ==========================================
@@ -110,7 +118,9 @@ public class OnDemandTripRequestService {
     ) {}
 
     public record AssignTripRequest(
-            Long tripId
+            Long tripId,
+            Long vehicleId,
+            Long driverId
     ) {}
 
     public record CancelRequest(
@@ -469,6 +479,10 @@ public class OnDemandTripRequestService {
     ) {
         currentUserService.requireAdmin();
 
+        if (request != null && request.tripId() == null) {
+            return assignNewCustomTrip(requestId, request);
+        }
+
         if (request == null
                 || request.tripId() == null
                 || request.tripId() <= 0) {
@@ -568,6 +582,54 @@ public class OnDemandTripRequestService {
         entity.setAssignedAt(LocalDateTime.now());
         entity.setStatus(ASSIGNED);
 
+        return toProfile(requestRepository.save(entity));
+    }
+
+    // Create a dedicated CUSTOM route and trip from the passenger's map points.
+    // Existing STANDARD and STAFF trip assignment remains unchanged.
+    @Transactional
+    public OnDemandRequestProfile assignNewCustomTrip(Long requestId, AssignTripRequest request) {
+        currentUserService.requireAdmin();
+        if (request == null || request.vehicleId() == null || request.driverId() == null) {
+            throw badRequest("Select an available vehicle and driver");
+        }
+        OnDemandTripRequest entity = findLockedRequest(requestId);
+        requireStatus(entity, APPROVED);
+        ensurePickupStillFuture(entity);
+        if (!"CUSTOM".equalsIgnoreCase(entity.getServiceType())) {
+            throw badRequest("New trip creation is only available for CUSTOM requests");
+        }
+        // The approved fare is an administrative decision, never a fabricated estimate.
+        BigDecimal fare = entity.getApprovedFare();
+        if (fare == null) {
+            throw badRequest("Approve a fare before assigning a custom trip");
+        }
+        Route route = new Route();
+        route.setName("Custom request #" + entity.getId());
+        route.setOrigin(entity.getPickupAddress().substring(0, Math.min(120, entity.getPickupAddress().length())));
+        route.setDestination(entity.getDestinationAddress().substring(0, Math.min(120, entity.getDestinationAddress().length())));
+        route.setServiceType("CUSTOM");
+        route.setStatus("ACTIVE");
+        route.setDistanceKm(entity.getEstimatedDistanceKm());
+        route.setBaseFare(fare);
+        route = routeRepository.save(route);
+        LocalDateTime departure = entity.getRequestedPickupTime();
+        // Duration is provisional until road-routing is integrated; admin must review.
+        LocalDateTime arrival = departure.plusMinutes(
+                entity.getEstimatedDurationMinutes() == null
+                        ? 60 : Math.max(1, entity.getEstimatedDurationMinutes()));
+        TripService.TripProfile created = tripService.createTrip(
+                new TripService.CreateTripRequest(route.getId(), request.vehicleId(),
+                        request.driverId(), departure, arrival, fare));
+        Trip trip = tripRepository.findById(created.id())
+                .orElseThrow(() -> notFound("Created trip not found"));
+        if (trip.getVehicle().getSeatingCapacity() == null
+                || trip.getVehicle().getSeatingCapacity() < entity.getPassengerCount()) {
+            throw conflict("Selected vehicle does not have enough seats");
+        }
+        entity.setAssignedTrip(trip);
+        entity.setAssignedAt(LocalDateTime.now());
+        entity.setStatus(ASSIGNED);
         return toProfile(requestRepository.save(entity));
     }
 
