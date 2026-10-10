@@ -32,6 +32,8 @@ export function ApiSearchTrips() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
+  const [selectedTripId, setSelectedTripId] = useState(null)
+  const [sort, setSort] = useState('earliest')
   useEffect(() => {
     let active = true
     Promise.all([listUpcomingTrips(), request('/routes/active')]).then(async ([items, activeRoutes]) => {
@@ -55,24 +57,16 @@ export function ApiSearchTrips() {
     const destination = stops.find(s => board && s.stopOrder > board.stopOrder && includes(s, to))
     return board && destination ? [{ trip, board, destination }] : []
   })
-  return <>{title('Find and book your trip', 'Choose the trip type, select your route and travel date, and book your seat.')}
-    <div className="sm-type-selector"><button type="button" className={tripType === 'STANDARD' ? 'selected' : ''} onClick={() => setTripType('STANDARD')}><strong>Standard Trips</strong><small>Scheduled routes for all passengers</small></button><button type="button" className={tripType === 'STAFF' ? 'selected' : ''} onClick={() => setTripType('STAFF')}><strong>Staff Transport</strong><small>Routes for company staff</small></button><Link to="/passenger/custom-trips"><strong>Custom Trip</strong><small>Request a personalised journey</small></Link></div>
-    <form className="pass-search-form" onSubmit={e => { e.preventDefault(); setParams({ from, to, date, passengers: String(seats), type: tripType }) }}>
-      <label>Boarding stop<input value={from} onChange={e => setFrom(e.target.value)} placeholder="e.g. Maharagama" /></label>
-      <label>Destination stop<input value={to} onChange={e => setTo(e.target.value)} placeholder="e.g. Nugegoda" /></label>
-      <label>Travel date<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
-      <label>Passengers<select value={seats} onChange={e => setSeats(Number(e.target.value))}>{[1,2,3,4,5,6].map(n => <option key={n}>{n}</option>)}</select></label>
-      <button className="button button-primary">Search trips</button>
-    </form>
-    {loading ? message('Loading upcoming trips...') : error ? message(error, () => { setLoading(true); setRefresh(n => n + 1) }) : matches.length === 0 ? message('No matching upcoming trips for this category. Check your stops or travel date.') :
-      <div className="search-results-grid">{matches.map(({ trip, board, destination }) => <article className="pass-trip-card" key={trip.id}>
-        <div className="pass-trip-top"><span>{dateOf(trip.departureTime)} · {timeOf(trip.departureTime)}</span><span>{trip.status}</span></div>
-        <h3>{board.stopName} → {destination.stopName}</h3>
-        <p>{trip.routeName} · {trip.vehicleRegistration || 'Vehicle assigned later'}</p>
-        <p>Capacity: {trip.seatingCapacity ?? 'See availability'} · Fare determined at checkout</p>
-        <Link className="button button-primary" to={`${linkStops(trip.id, board.id, destination.id)}&seats=${seats}`}>Check seats and details</Link>
-      </article>)}</div>}
-  </>
+  const orderedMatches = [...matches].sort((a,b) => sort === 'latest' ? String(b.trip.departureTime).localeCompare(String(a.trip.departureTime)) : String(a.trip.departureTime).localeCompare(String(b.trip.departureTime)))
+  const selected = orderedMatches.find(item => String(item.trip.id) === String(selectedTripId)) || orderedMatches[0]
+  const selectedDetails = selected ? routes[selected.trip.routeId] : null
+  return <div className="sm-search-page">
+    <div className="sm-search-heading"><div>{title('Find and book your trip', 'Choose the trip type, select your route and travel date, and book your seat.')}</div><aside><strong>Different trip types</strong><p>Standard trips are open for all passengers. Staff transport is for company staff only. Custom trips let you request a personalised trip.</p></aside></div>
+    <div className="sm-type-selector"><button type="button" className={tripType === 'STANDARD' ? 'selected' : ''} onClick={() => {setTripType('STANDARD');setSelectedTripId(null)}}><span className="sm-type-icon">▣</span><span><strong>Standard Trips</strong><small>Scheduled routes for all passengers</small></span><span className="sm-type-check">{tripType==='STANDARD'?'✓':'›'}</span></button><button type="button" className={tripType === 'STAFF' ? 'selected' : ''} onClick={() => {setTripType('STAFF');setSelectedTripId(null)}}><span className="sm-type-icon">♟</span><span><strong>Staff Transport</strong><small>Routes for company staff</small></span><span className="sm-type-check">{tripType==='STAFF'?'✓':'›'}</span></button><Link to="/passenger/custom-trips"><span className="sm-type-icon">➤</span><span><strong>Custom Trip</strong><small>Request a personalised trip</small></span><span className="sm-type-check">›</span></Link></div>
+    <form className="sm-search-form sm-surface" onSubmit={e => {e.preventDefault();setSelectedTripId(null);setParams({from,to,date,passengers:String(seats),type:tripType})}}><h3>⌕ &nbsp; Search {tripType==='STAFF'?'staff transport':'standard trips'}</h3><div className="sm-search-fields"><label>From<input value={from} onChange={e=>setFrom(e.target.value)} placeholder="e.g. Maharagama"/></label><label>To<input value={to} onChange={e=>setTo(e.target.value)} placeholder="e.g. Nugegoda"/></label><label>Travel date<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label><label>Number of passengers<select value={seats} onChange={e=>setSeats(Number(e.target.value))}>{[1,2,3,4,5,6].map(n=><option key={n}>{n}</option>)}</select></label><button className="button button-primary">⌕ &nbsp; Search trips</button></div></form>
+    {loading ? message('Loading upcoming trips...') : error ? message(error,()=>{setLoading(true);setRefresh(n=>n+1)}) : orderedMatches.length===0 ? message('No matching upcoming trips for this category. Check your stops or travel date.') :
+    <div className="sm-results-layout"><section className="sm-surface sm-results"><div className="sm-results-title"><div><h2>Available {tripType==='STAFF'?'Staff':'Standard'} Trips</h2><p>{orderedMatches.length} matching upcoming trip{orderedMatches.length===1?'':'s'}</p></div><label>Sort by <select value={sort} onChange={e=>setSort(e.target.value)}><option value="earliest">Departure time (earliest)</option><option value="latest">Departure time (latest)</option></select></label></div><div className="sm-trip-list">{orderedMatches.map(({trip,board,destination})=><article key={trip.id} className={'sm-trip-option '+(selected?.trip.id===trip.id?'active':'')} onClick={()=>setSelectedTripId(trip.id)}><div className="sm-trip-times"><strong>{timeOf(trip.departureTime)}</strong><span>│</span><small>{timeOf(trip.arrivalTime)}</small></div><div className="sm-trip-info"><h3>{board.stopName} → {destination.stopName}</h3><p>{trip.routeName||'Scheduled route'}</p><small>{routes[trip.routeId]?.stops?.map(stop=>stop.stopName).join(', ')}</small></div><div className="sm-trip-fare"><strong>{trip.fare!=null?formatLkr(trip.fare):'Fare at checkout'}</strong><small>{trip.seatingCapacity!=null?trip.seatingCapacity+' total seats':'Check availability'}</small></div><Link className="button button-primary" to={`${linkStops(trip.id,board.id,destination.id)}&seats=${seats}`}>View seats</Link></article>)}</div></section><aside className="sm-surface sm-trip-detail">{selectedDetails&&<><div className="sm-trip-map"><RouteMapPreview route={selectedDetails.route} stops={selectedDetails.stops} height={260}/></div><div className="sm-detail-body"><h2>Trip details <span>{tripType}</span></h2><div className="sm-detail-stop"><strong>{timeOf(selected.trip.departureTime)} &nbsp; {selected.board.stopName} (Pickup)</strong><strong>{timeOf(selected.trip.arrivalTime)} &nbsp; {selected.destination.stopName} (Drop-off)</strong></div><div className="sm-detail-metrics"><span>Route<strong>{selected.trip.routeName||'Scheduled route'}</strong></span><span>Departure<strong>{dateOf(selected.trip.departureTime)}</strong></span><span>Seats<strong>{selected.trip.seatingCapacity??'Check availability'}</strong></span></div><Link className="button button-primary sm-detail-book" to={`${linkStops(selected.trip.id,selected.board.id,selected.destination.id)}&seats=${seats}`}>View seats and book</Link></div></>}</aside></div>}
+  </div>
 }
 
 function useJourney(tripId, params) {
