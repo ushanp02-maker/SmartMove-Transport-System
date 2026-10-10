@@ -21,6 +21,7 @@ const journey = booking => `${booking.boardingStop || 'Boarding'} → ${booking.
 
 export function ApiSearchTrips() {
   const [params, setParams] = useSearchParams()
+  const [tripType, setTripType] = useState(params.get('type') === 'STAFF' ? 'STAFF' : 'STANDARD')
   const [trips, setTrips] = useState([])
   const [routes, setRoutes] = useState({})
   const [from, setFrom] = useState(params.get('from') || '')
@@ -45,7 +46,7 @@ export function ApiSearchTrips() {
   }, [refresh])
   const matches = trips.flatMap(trip => {
     const details = routes[trip.routeId]
-    if (!details || (details.route?.serviceType || 'COMMUTER') !== 'COMMUTER') return []
+    if (!details || (tripType === 'STAFF' ? String(details.route?.serviceType).toUpperCase() !== 'STAFF' : !['STANDARD','COMMUTER'].includes(String(details.route?.serviceType || 'COMMUTER').toUpperCase()))) return []
     if (date && dateOf(trip.departureTime) !== date) return []
     const stops = details.stops
     const includes = (stop, value) => !value.trim() || stop.stopName.toLowerCase().includes(value.trim().toLowerCase())
@@ -53,15 +54,16 @@ export function ApiSearchTrips() {
     const destination = stops.find(s => board && s.stopOrder > board.stopOrder && includes(s, to))
     return board && destination ? [{ trip, board, destination }] : []
   })
-  return <>{title('Find your journey', 'Live upcoming trips from Oracle. Search boarding and destination stops in travel order.')}
-    <form className="pass-search-form" onSubmit={e => { e.preventDefault(); setParams({ from, to, date, passengers: String(seats) }) }}>
+  return <>{title('Find and book your trip', 'Choose the trip type, select your route and travel date, and book your seat.')}
+    <div className="sm-type-selector"><button type="button" className={tripType === 'STANDARD' ? 'selected' : ''} onClick={() => setTripType('STANDARD')}><strong>Standard Trips</strong><small>Scheduled routes for all passengers</small></button><button type="button" className={tripType === 'STAFF' ? 'selected' : ''} onClick={() => setTripType('STAFF')}><strong>Staff Transport</strong><small>Routes for company staff</small></button><Link to="/passenger/custom-trips"><strong>Custom Trip</strong><small>Request a personalised journey</small></Link></div>
+    <form className="pass-search-form" onSubmit={e => { e.preventDefault(); setParams({ from, to, date, passengers: String(seats), type: tripType }) }}>
       <label>Boarding stop<input value={from} onChange={e => setFrom(e.target.value)} placeholder="e.g. Maharagama" /></label>
       <label>Destination stop<input value={to} onChange={e => setTo(e.target.value)} placeholder="e.g. Nugegoda" /></label>
       <label>Travel date<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
       <label>Passengers<select value={seats} onChange={e => setSeats(Number(e.target.value))}>{[1,2,3,4,5,6].map(n => <option key={n}>{n}</option>)}</select></label>
       <button className="button button-primary">Search trips</button>
     </form>
-    {loading ? message('Loading upcoming trips...') : error ? message(error, () => { setLoading(true); setRefresh(n => n + 1) }) : matches.length === 0 ? message('No matching upcoming commuter trips. Check your stops or travel date.') :
+    {loading ? message('Loading upcoming trips...') : error ? message(error, () => { setLoading(true); setRefresh(n => n + 1) }) : matches.length === 0 ? message('No matching upcoming trips for this category. Check your stops or travel date.') :
       <div className="search-results-grid">{matches.map(({ trip, board, destination }) => <article className="pass-trip-card" key={trip.id}>
         <div className="pass-trip-top"><span>{dateOf(trip.departureTime)} · {timeOf(trip.departureTime)}</span><span>{trip.status}</span></div>
         <h3>{board.stopName} → {destination.stopName}</h3>
