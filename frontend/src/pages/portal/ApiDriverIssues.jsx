@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
+import { AlertTriangle, ClipboardList, Send, Wrench, CalendarDays } from 'lucide-react'
 import { request } from '../../services/apiClient'
-const list=value=>Array.isArray(value)?value:value?.content||[]
-export default function ApiDriverIssues(){
- const [trips,setTrips]=useState([]),[issues,setIssues]=useState([]),[tripId,setTripId]=useState(''),[description,setDescription]=useState(''),[priority,setPriority]=useState('HIGH'),[message,setMessage]=useState(''),[refresh,setRefresh]=useState(0)
- useEffect(()=>{
-  let active=true
-  Promise.all([request('/trip-status/driver/my-trips'),request('/driver-issues/mine')])
-   .then(([assigned,reported])=>{if(active){setTrips(list(assigned));setIssues(list(reported));setMessage('')}})
-   .catch(err=>{if(active)setMessage(err.message)})
-  return()=>{active=false}
- },[refresh])
- const submit=async event=>{
-  event.preventDefault()
-  try{
-   await request('/driver-issues',{method:'POST',body:JSON.stringify({tripId:Number(tripId),description,priority})})
-   setDescription('');setTripId('');setRefresh(n=>n+1);setMessage('Issue reported to operations.')
-  }catch(err){setMessage(err.message)}
- }
- return <section className="portal-panel"><h1>Report a vehicle issue</h1><p>Reports are stored in MongoDB and linked to your assigned trip and vehicle.</p><form onSubmit={submit}><label>Assigned trip<select required value={tripId} onChange={e=>setTripId(e.target.value)}><option value="">Select a trip</option>{trips.filter(t=>t.vehicleId).map(t=><option key={t.tripId} value={t.tripId}>Trip #{t.tripId} · Vehicle #{t.vehicleId}</option>)}</select></label><label>Priority<select value={priority} onChange={e=>setPriority(e.target.value)}>{['LOW','NORMAL','HIGH','URGENT'].map(x=><option key={x}>{x}</option>)}</select></label><label>Issue details<textarea required maxLength={1000} value={description} onChange={e=>setDescription(e.target.value)}/></label><button className="button button-primary">Report issue</button></form><p role="status">{message}</p><h2>My reports</h2>{issues.length?issues.map(issue=><article key={issue.id} className="portal-panel"><strong>{issue.priority} · {issue.status}</strong><p>Trip #{issue.tripId} · Vehicle #{issue.vehicleId}</p><p>{issue.description}</p></article>):<p>No reported issues yet.</p>}</section>
+import './DriverPolish.css'
+const list = value => Array.isArray(value)?value:value?.content||[]
+export default function ApiDriverIssues() {
+  const [trips,setTrips]=useState([]),[issues,setIssues]=useState([]),[tripId,setTripId]=useState(''),[description,setDescription]=useState(''),[priority,setPriority]=useState('HIGH'),[message,setMessage]=useState(''),[refresh,setRefresh]=useState(0),[busy,setBusy]=useState(false)
+  useEffect(()=>{let active=true;Promise.all([request('/trip-status/driver/my-trips'),request('/driver-issues/mine')]).then(([assigned,reported])=>{if(active){setTrips(list(assigned));setIssues(list(reported))}}).catch(err=>{if(active)setMessage(err.message)});return()=>{active=false}},[refresh])
+  const submit=async event=>{event.preventDefault();setBusy(true);setMessage('');try{await request('/driver-issues',{method:'POST',body:JSON.stringify({tripId:Number(tripId),description,priority})});setDescription('');setTripId('');setRefresh(n=>n+1);setMessage('Issue reported to operations.')}catch(err){setMessage(err.message)}finally{setBusy(false)}}
+  return <div className="dp-page"><header className="dp-hero issue"><div><span className="dp-kicker">VEHICLE SAFETY</span><h1>Report a vehicle issue</h1><p>Report problems with your assigned vehicle. Reports are saved in MongoDB.</p></div><div className="dp-hero-symbol"><Wrench size={45}/></div></header><div className="dp-body">
+    <form className="dp-form" onSubmit={submit}><h2 className="dp-section-title"><ClipboardList size={20}/> Submit a new issue</h2><div className="dp-form-grid"><label className="dp-field">Assigned trip<select required value={tripId} onChange={e=>setTripId(e.target.value)}><option value="">Select a trip</option>{trips.filter(t=>t.vehicleId!=null).map(t=><option key={t.tripId} value={t.tripId}>Vehicle #{t.vehicleId} · Trip #{t.tripId}</option>)}</select></label><label className="dp-field">Priority<select value={priority} onChange={e=>setPriority(e.target.value)}>{['LOW','NORMAL','HIGH','URGENT'].map(x=><option key={x}>{x}</option>)}</select></label></div><label className="dp-field">Issue details<textarea required maxLength={1000} placeholder="Describe the problem and any relevant details..." value={description} onChange={e=>setDescription(e.target.value)}/></label><div className="dp-form-actions"><small>{description.length}/1000 characters</small><button className="dp-button primary" disabled={busy} type="submit"><Send size={15}/>{busy?'Submitting...':'Report issue'}</button></div></form>
+    {message&&<p role="status" className={/reported to operations/i.test(message)?'':'dp-error'}>{message}</p>}
+    <section className="dp-reports"><h2 className="dp-section-title"><ClipboardList size={19}/> My reported issues</h2>{issues.length?issues.map((issue,i)=><article className="dp-report" key={issue.id??i}><span className="dp-report-icon"><AlertTriangle size={21}/></span><div className="dp-report-main"><strong>Vehicle #{issue.vehicleId??'—'} · Trip #{issue.tripId??'—'}</strong><p>{issue.description}</p></div><div className="dp-report-meta"><span className={'dp-pill '+String(issue.priority||'').toLowerCase()}>{issue.priority||'NORMAL'}</span>{issue.createdAt&&<small><CalendarDays size={12}/> {new Date(issue.createdAt).toLocaleDateString()}</small>}<span className={'dp-pill '+String(issue.status||'OPEN').toLowerCase()}>{issue.status||'OPEN'}</span></div></article>):<div className="dp-empty"><CheckEmpty/><h3>No reported issues yet</h3><p>Your vehicle issue reports will appear here.</p></div>}</section>
+  </div></div>
 }
+function CheckEmpty(){return <ClipboardList size={30}/>}
