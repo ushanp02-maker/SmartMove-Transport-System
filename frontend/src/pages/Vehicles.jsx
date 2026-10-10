@@ -1,4 +1,4 @@
 import EntityPage from '../components/EntityPage'
-import ApiAdminEntity from '../components/ApiAdminEntity'
+import FleetVehicles from './FleetVehicles'
 import { isApiMode } from '../services/apiClient'
-export default function Vehicles() { return isApiMode() ? <ApiAdminEntity entity="vehicles" /> : <EntityPage entity="vehicles" /> }
+export default function Vehicles() { return isApiMode() ? <FleetVehicles /> : <EntityPage entity="vehicles" /> }
