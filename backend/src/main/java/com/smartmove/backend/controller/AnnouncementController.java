@@ -3,6 +3,7 @@ package com.smartmove.backend.controller;
 
 import com.smartmove.backend.service.AnnouncementService;
 import com.smartmove.backend.service.CurrentUserService;
+import com.smartmove.backend.service.PortalNotificationService;
 import com.smartmove.backend.service.AnnouncementService.AnnouncementProfile;
 import com.smartmove.backend.service.AnnouncementService.PublicAnnouncement;
 import com.smartmove.backend.service.AnnouncementService.CreateAnnouncementRequest;
@@ -38,13 +39,16 @@ public class AnnouncementController {
 
     private final AnnouncementService announcementService;
     private final CurrentUserService currentUserService;
+    private final PortalNotificationService notifications;
 
     public AnnouncementController(
             AnnouncementService announcementService,
-            CurrentUserService currentUserService
+            CurrentUserService currentUserService,
+            PortalNotificationService notifications
     ) {
         this.announcementService = announcementService;
         this.currentUserService = currentUserService;
+        this.notifications = notifications;
     }
 
     // ==========================================
@@ -384,12 +388,10 @@ public class AnnouncementController {
             @PathVariable String announcementId
     ) {
         currentUserService.requireAdmin();
-        return ResponseEntity.ok(
-                announcementService.publishAnnouncement(
-                        announcementId,
-                        currentUserService.getCurrentAccountId()
-                )
-        );
+        AnnouncementProfile published=announcementService.publishAnnouncement(
+                announcementId,currentUserService.getCurrentAccountId());
+        notifications.notifyAudience(published.targetAudience(),published.title(),published.message(),"/announcements");
+        return ResponseEntity.ok(published);
     }
 
     // ==========================================
