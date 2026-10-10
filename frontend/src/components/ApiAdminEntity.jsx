@@ -54,7 +54,7 @@ export default function ApiAdminEntity({ entity }) {
   const resourceAvailable = (item, key) => {
     if (key === 'routeId') return String(item.status || '').toUpperCase() === 'ACTIVE' || String(item.id) === String(values[key])
     const status = String(item.status || '').toUpperCase()
-    if (!['AVAILABLE','ON_TRIP'].includes(status) && String(item.id) !== String(values[key])) return false
+    if (status !== 'AVAILABLE' && String(item.id) !== String(values[key])) return false
     return !scheduledTrips.some(trip => String(trip[key]) === String(item.id) && overlaps(trip))
   }
   const selectedRoute = entity === 'trips' ? (Array.isArray(options.routes) ? options.routes : []).find(x => String(x.id) === String(values.routeId)) : null
