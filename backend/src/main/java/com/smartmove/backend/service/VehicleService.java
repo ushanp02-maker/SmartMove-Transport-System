@@ -348,6 +348,7 @@ public class VehicleService {
                         "AVAILABLE",
                         minimumCapacity
                 )
+                .stream()
                 .map(this::toProfile)
                 .toList();
     }
