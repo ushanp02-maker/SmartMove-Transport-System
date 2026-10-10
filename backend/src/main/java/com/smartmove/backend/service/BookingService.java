@@ -416,9 +416,21 @@ public class BookingService {
                 generateBookingReference()
         );
 
-        return toProfile(
-                bookingRepository.save(booking)
-        );
+        Booking savedBooking = bookingRepository.save(booking);
+
+        // Create a pending payment record as part of the same Oracle
+        // transaction. This is a payment obligation, not a charge.
+        Payment pendingPayment = new Payment();
+        pendingPayment.setBooking(savedBooking);
+        pendingPayment.setAmount(savedBooking.getTotalFare().setScale(2, RoundingMode.HALF_UP));
+        pendingPayment.setCurrency("LKR");
+        pendingPayment.setPaymentMethod("SIMULATED");
+        pendingPayment.setStatus("PENDING");
+        pendingPayment.setTransactionReference("PAY-" + UUID.randomUUID().toString().replace("-", "").toUpperCase(Locale.ROOT));
+        pendingPayment.setNotes("Awaiting payment confirmation");
+        paymentRepository.save(pendingPayment);
+
+        return toProfile(savedBooking);
     }
 
     // ==========================================
