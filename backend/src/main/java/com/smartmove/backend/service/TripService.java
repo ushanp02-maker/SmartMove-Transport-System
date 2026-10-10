@@ -591,23 +591,6 @@ public class TripService {
             );
         }
 
-        if (vehicle.getNextServiceDate() != null
-                && !vehicle.getNextServiceDate()
-                .isAfter(arrival.toLocalDate())) {
-            throw conflict(
-                    "Vehicle requires servicing before or during the trip"
-            );
-        }
-
-        if (!vehicleService
-                .checkVehicleCompliance(
-                        vehicle.getId()
-                ).compliant()) {
-            throw conflict(
-                    "Vehicle document or maintenance compliance failed"
-            );
-        }
-
         long driverConflicts =
                 tripRepository.countDriverScheduleConflicts(
                         driver.getId(),
@@ -638,18 +621,7 @@ public class TripService {
             );
         }
 
-        long maintenanceConflicts =
-                maintenanceRepository.countMaintenanceConflicts(
-                        vehicle.getId(),
-                        departure.toLocalDate(),
-                        arrival.toLocalDate()
-                );
 
-        if (maintenanceConflicts > 0) {
-            throw conflict(
-                    "Vehicle has maintenance scheduled during the trip"
-            );
-        }
     }
 
     // ==========================================
