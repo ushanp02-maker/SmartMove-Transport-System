@@ -151,7 +151,7 @@ export function demoOnly(operation) {
 
 export async function downloadVehicleFile(fileId) {
   if (!isApiMode() || !API_BASE_URL) throw new Error('API mode is required')
-  const response = await fetch(API_BASE_URL.replace(/\\/$/, '') + '/vehicle-documents/files/' + encodeURIComponent(fileId), {
+  const response = await fetch(API_BASE_URL.replace(/\/$/, '') + '/vehicle-documents/files/' + encodeURIComponent(fileId), {
     headers: buildAuthorizationHeader(),
   })
   if (!response.ok) throw new Error('Unable to open the selected file (' + response.status + ')')
