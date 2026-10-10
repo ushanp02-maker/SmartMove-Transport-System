@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CalendarDays, Mail, MapPin, Phone, UserRound, ShieldCheck } from 'lucide-react'
 import { request } from '../../services/apiClient'
 import { listPassengerBookings } from '../../services/bookingService'
 import { formatLkr } from '../../services/formatters'
+import './PassengerPolish.css'
 
 export function ApiPassengerProfile() {
   const [profile, setProfile] = useState(null)
@@ -17,7 +19,19 @@ export function ApiPassengerProfile() {
     load().catch(e => { if (active) setError(e.message) })
     return () => { active = false }
   }, [])
-  return <section className="portal-panel"><h1>My passenger profile</h1>{error && <p role="alert">{error}</p>}{profile && Object.entries(profile).map(([key, value]) => <p key={key}><strong>{key}</strong>: {String(value ?? '—')}</p>)}</section>
+  const details = profile ? [
+    { label: 'Full name', value: profile.name || profile.fullName, Icon: UserRound },
+    { label: 'Email', value: profile.email, Icon: Mail },
+    { label: 'Phone', value: profile.phone, Icon: Phone },
+    { label: 'City', value: profile.city, Icon: MapPin },
+    { label: 'Joined date', value: profile.joinedDate, Icon: CalendarDays },
+  ] : []
+  return <div className="sp-page">
+    <header className="sp-heading sp-profile-hero"><div><span className="sp-eyebrow">MY SMARTMOVE ACCOUNT</span><h1>My passenger profile</h1><p>View your personal information and account details.</p></div><span className="sp-hero-icon"><UserRound size={42}/></span></header>
+    {error && <p className="sp-error" role="alert">{error}</p>}
+    {!profile && !error && <p>Loading your profile...</p>}
+    {profile && <div className="sp-surface sp-profile-layout"><div className="sp-profile-identity"><div className="sp-avatar"><UserRound size={54}/></div><h2>{profile.name || profile.fullName || 'Passenger'}</h2><p>Passenger</p><span className="sp-account-status"><ShieldCheck size={14}/> SmartMove account</span></div><div className="sp-profile-fields">{details.map(({label,value,Icon}) => <div className="sp-profile-row" key={label}><span className="sp-detail-icon"><Icon size={18}/></span><span className="sp-detail-label">{label}</span><strong>{value || 'Not provided'}</strong></div>)}</div></div>}
+  </div>
 }
 
 export function ApiPassengerPayments() {
