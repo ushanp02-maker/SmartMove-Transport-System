@@ -5,6 +5,7 @@ import { listUpcomingTrips, getTrip } from '../../services/tripService'
 import { createBooking, getBookingQuote, getSeatAvailability, listPassengerBookings, cancelBooking } from '../../services/bookingService'
 import { useAppData } from '../../services/useAppData'
 import { formatLkr } from '../../services/formatters'
+import RouteMapPreview from '../../components/RouteMapPreview'
 
 const dateOf = value => String(value || '').slice(0, 10)
 const timeOf = value => String(value || '').slice(11, 16)
@@ -97,9 +98,10 @@ export function ApiPassengerTripDetails() {
   const [state, retry] = useJourney(tripId, params)
   if (state.loading) return message('Loading journey details...')
   if (state.error) return message(state.error, retry)
-  const { trip, board, destination, availability } = state
+  const { trip, board, destination, availability, details } = state
   return <>{title(`${board.stopName} to ${destination.stopName}`, 'Live route and seat information')}
     <section className="portal-panel"><h2>{trip.routeName}</h2><p>Departure: {dateOf(trip.departureTime)} at {timeOf(trip.departureTime)}</p><p>Arrival: {dateOf(trip.arrivalTime)} at {timeOf(trip.arrivalTime)}</p><p>Vehicle: {trip.vehicleRegistration || 'Pending'}</p><p>Seats available for this segment: <strong>{availability.availableSeats}</strong></p>
+      <RouteMapPreview route={details.route} stops={details.stops} height={300}/>
       <Link className="button button-primary" to={`/passenger/book/${trip.id}?${new URLSearchParams({ boardingStopId: board.id, destinationStopId: destination.id, seats: params.get('seats') || '1' })}`}>Continue to booking</Link>
     </section></>
 }
@@ -125,7 +127,7 @@ export function ApiBookTicket() {
   }, [tripId, state.board, state.destination, seats])
   if (state.loading) return message('Checking availability...')
   if (state.error) return message(state.error, retry)
-  const { trip, board, destination, availability } = state
+  const { trip, board, destination, availability, details } = state
   if (saved) return <>{title('Booking created', 'Your reservation was saved in Oracle. No payment has been processed.')}<section className="portal-panel"><h2>Reference: {saved.bookingReference}</h2><p>Status: {saved.status}</p><p>{saved.seatCount} seat(s) · {formatLkr(saved.totalFare)}</p><Link className="button button-primary" to={`/passenger/tickets?booking=${saved.id}`}>View booking details</Link></section></>
   const submit = async e => {
     e.preventDefault()
@@ -139,7 +141,7 @@ export function ApiBookTicket() {
     finally { setSaving(false) }
   }
   return <>{title('Reserve your seats', `${board.stopName} → ${destination.stopName} · ${dateOf(trip.departureTime)}`)}
-    <form className="booking-form portal-panel" onSubmit={submit}><h2>Booking summary</h2>
+    <form className="booking-form portal-panel" onSubmit={submit}><h2>Booking summary</h2><RouteMapPreview route={details.route} stops={details.stops} height={260}/>
       <p>Seats available: {availability.availableSeats}</p>
       <label>Number of seats<select value={seats} onChange={e => setSeats(Number(e.target.value))}>{[1,2,3,4,5,6].filter(n => n <= availability.availableSeats).map(n => <option key={n}>{n}</option>)}</select></label>
       {quote && <p>Fare per seat: {formatLkr(quote.farePerSeat)} · Total: <strong>{formatLkr(quote.totalFare)}</strong></p>}
