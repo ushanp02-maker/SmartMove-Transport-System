@@ -2,6 +2,7 @@
 package com.smartmove.backend.controller;
 
 import com.smartmove.backend.service.AnnouncementService;
+import com.smartmove.backend.service.CurrentUserService;
 import com.smartmove.backend.service.AnnouncementService.AnnouncementProfile;
 import com.smartmove.backend.service.AnnouncementService.PublicAnnouncement;
 import com.smartmove.backend.service.AnnouncementService.CreateAnnouncementRequest;
@@ -36,11 +37,14 @@ import java.util.Map;
 public class AnnouncementController {
 
     private final AnnouncementService announcementService;
+    private final CurrentUserService currentUserService;
 
     public AnnouncementController(
-            AnnouncementService announcementService
+            AnnouncementService announcementService,
+            CurrentUserService currentUserService
     ) {
         this.announcementService = announcementService;
+        this.currentUserService = currentUserService;
     }
 
     // ==========================================
@@ -305,6 +309,7 @@ public class AnnouncementController {
     createAnnouncement(
             @Valid @RequestBody CreateAnnouncementPayload request
     ) {
+        currentUserService.requireAdmin();
         AnnouncementProfile announcement =
                 announcementService.createAnnouncement(
                         new CreateAnnouncementRequest(
@@ -324,7 +329,7 @@ public class AnnouncementController {
                                 request.pinned(),
                                 request.important(),
                                 request.internalNotes(),
-                                request.createdByUserId()
+                                currentUserService.getCurrentAccountId()
                         )
                 );
 
@@ -376,13 +381,13 @@ public class AnnouncementController {
     @PatchMapping("/{announcementId}/publish")
     public ResponseEntity<AnnouncementProfile>
     publishAnnouncement(
-            @PathVariable String announcementId,
-            @Valid @RequestBody ActorPayload request
+            @PathVariable String announcementId
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 announcementService.publishAnnouncement(
                         announcementId,
-                        request.userId()
+                        currentUserService.getCurrentAccountId()
                 )
         );
     }
@@ -498,11 +503,7 @@ public class AnnouncementController {
             Boolean important,
 
             @Size(max = 2000)
-            String internalNotes,
-
-            @NotNull(message = "Creator user ID is required")
-            @Positive
-            Long createdByUserId
+            String internalNotes
 
     ) {
     }
