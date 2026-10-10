@@ -305,18 +305,6 @@ public class VehicleService {
             throw badRequest("Invalid vehicle status");
         }
 
-        if ("AVAILABLE".equals(status)) {
-            VehicleCompliance compliance =
-                    checkVehicleCompliance(vehicleId);
-
-            if (!compliance.compliant()) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "Vehicle is not compliant or requires maintenance"
-                );
-            }
-        }
-
         // Controllers must restrict status transitions
         // to authorized users. Trip scheduling will
         // manage ON_TRIP transitions separately.
@@ -359,12 +347,6 @@ public class VehicleService {
                 .findByStatusIgnoreCaseAndSeatingCapacityGreaterThanEqual(
                         "AVAILABLE",
                         minimumCapacity
-                )
-                .stream()
-                .filter(vehicle ->
-                        checkVehicleCompliance(
-                                vehicle.getId()
-                        ).compliant()
                 )
                 .map(this::toProfile)
                 .toList();
