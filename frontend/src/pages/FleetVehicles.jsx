@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BusFront, Plus, Search, Eye, Pencil, RefreshCw, ArrowLeft } from 'lucide-react'
+import { BusFront, Plus, Search, Eye, Pencil, RefreshCw } from 'lucide-react'
 import { request } from '../services/apiClient'
 import './fleetWorkspace.css'
 const blank={registrationNumber:'',name:'',vehicleType:'',seatingCapacity:'',currentMileage:'',nextServiceDate:'',manufactureYear:''}
