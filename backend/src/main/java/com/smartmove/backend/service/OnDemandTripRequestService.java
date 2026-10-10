@@ -39,7 +39,7 @@ public class OnDemandTripRequestService {
     private static final String COMPLETED = "COMPLETED";
 
     private static final Set<String> SERVICE_TYPES =
-            Set.of("STANDARD", "PREMIUM", "STAFF", "OTHER");
+            Set.of("STANDARD", "STAFF", "CUSTOM");
 
     private static final double EARTH_RADIUS_KM = 6371.0088;
 
