@@ -30,7 +30,8 @@ export default function ApiAdminEntity({ entity }) {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [page, setPage] = useState(1)
   const [options, setOptions] = useState({ routes: [], vehicles: [], drivers: [] })
-  useEffect(() => { if (entity !== 'trips') return; let alive = true; Promise.allSettled(['/routes','/vehicles','/drivers'].map(path => request(path))).then(results => { if (alive) setOptions({ routes: results[0].status === 'fulfilled' ? results[0].value : [], vehicles: results[1].status === 'fulfilled' ? results[1].value : [], drivers: results[2].status === 'fulfilled' ? results[2].value : [] }) }); return () => { alive = false } }, [entity])
+  const [scheduledTrips, setScheduledTrips] = useState([])
+  useEffect(() => { if (entity !== 'trips') return; let alive = true; Promise.allSettled(['/routes','/vehicles','/drivers','/trips'].map(path => request(path))).then(results => { if (alive) setOptions({ routes: results[0].status === 'fulfilled' ? results[0].value : [], vehicles: results[1].status === 'fulfilled' ? results[1].value : [], drivers: results[2].status === 'fulfilled' ? results[2].value : [] }); if (alive && results[3].status === 'fulfilled') setScheduledTrips(Array.isArray(results[3].value) ? results[3].value : results[3].value?.content || []) }); return () => { alive = false } }, [entity])
   useEffect(() => {
     let active = true
     request(config.path).then(records => { if (active) { setItems(records); setError('') } })
@@ -43,6 +44,18 @@ export default function ApiAdminEntity({ entity }) {
     setEditing(record || {})
     setActionError('')
     setValues(Object.fromEntries(config.fields.map(([key,,type]) => [key, formatInitial(record?.[key], type)])))
+  }
+  const overlaps = trip => {
+    if (trip.id === editing?.id || ['CANCELLED','COMPLETED'].includes(String(trip.status || '').toUpperCase())) return false
+    const start = Date.parse(values.departureTime), end = Date.parse(values.arrivalTime)
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return ['IN_PROGRESS'].includes(String(trip.status || '').toUpperCase())
+    return Date.parse(trip.departureTime) < end && Date.parse(trip.arrivalTime) > start
+  }
+  const resourceAvailable = (item, key) => {
+    if (key === 'routeId') return String(item.status || '').toUpperCase() === 'ACTIVE' || String(item.id) === String(values[key])
+    const status = String(item.status || '').toUpperCase()
+    if (!['AVAILABLE','ON_TRIP'].includes(status) && String(item.id) !== String(values[key])) return false
+    return !scheduledTrips.some(trip => String(trip[key]) === String(item.id) && overlaps(trip))
   }
   const selectedRoute = entity === 'trips' ? (Array.isArray(options.routes) ? options.routes : []).find(x => String(x.id) === String(values.routeId)) : null
   const submit = async event => {
@@ -58,6 +71,7 @@ export default function ApiAdminEntity({ entity }) {
       setEditing(null)
       setLoading(true)
       setVersion(n => n + 1)
+      if (entity === 'trips') request('/trips').then(data => setScheduledTrips(Array.isArray(data) ? data : data?.content || [])).catch(() => {})
     } catch (err) { setActionError(errorText(err)) }
     finally { setSaving(false) }
   }
@@ -109,7 +123,7 @@ export default function ApiAdminEntity({ entity }) {
   }
   const renderInput = ([key,title,type]) => {
     const choices = entity === 'trips' && (key === 'routeId' ? options.routes : key === 'vehicleId' ? options.vehicles : key === 'driverId' ? options.drivers : null)
-    return <label key={key}>{title}{choices ? <select value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}><option value="">Select {title.toLowerCase()}</option>{(Array.isArray(choices) ? choices : []).map(item => <option key={item.id} value={item.id}>{item.name || item.fullName || item.registrationNumber || item.username || title} — ID {item.id}</option>)}</select> : <input type={type || 'text'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))} step={type === 'number' ? 'any' : undefined} />}</label>
+    return <label key={key}>{title}{choices ? <select value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}><option value="">Select {title.toLowerCase()}</option>{(Array.isArray(choices) ? choices : []).filter(item => resourceAvailable(item,key)).map(item => <option key={item.id} value={item.id}>{item.name || item.fullName || item.registrationNumber || item.username || title} — ID {item.id}</option>)}</select> : <input type={type || 'text'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))} step={type === 'number' ? 'any' : undefined} />}</label>
   }
   if (!config) return <p>Unknown admin module.</p>
   return <section className="sm-admin-page">
