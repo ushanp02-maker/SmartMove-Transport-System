@@ -64,6 +64,16 @@ public class DriverIssueController {
         return issues.findAllByOrderByCreatedAtDesc();
     }
 
+    @DeleteMapping("/admin/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        users.requireAdmin();
+        var issue = issues.findById(id).orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found")
+        );
+        issues.delete(issue);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/admin/{id}/status")
     public DriverIssue update(@PathVariable String id, @RequestBody Map<String,String> input) {
         users.requireAdmin();
