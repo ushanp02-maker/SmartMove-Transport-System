@@ -211,7 +211,9 @@ public class RouteService {
         // and operational details are configured.
         route.setStatus("INACTIVE");
 
-        return toProfile(routeRepository.save(route));
+        Route saved = routeRepository.save(route);
+        addEndpointStops(saved);
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -301,6 +303,10 @@ public class RouteService {
                                     routeId
                             );
 
+            if (stops.isEmpty()) {
+                addEndpointStops(route);
+                stops = stopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
+            }
             if (stops.size() < 2) {
                 throw badRequest(
                         "At least two stops are required to activate a route"
@@ -320,6 +326,28 @@ public class RouteService {
         route.setStatus(status);
 
         return toProfile(routeRepository.save(route));
+    }
+
+    /**
+     * Register the origin and destination as actual ordered stops.
+     * Coordinates are left unset: place names alone are not precise GPS positions.
+     */
+    private void addEndpointStops(Route route) {
+        RouteStop origin = new RouteStop();
+        origin.setRoute(route);
+        origin.setStopName(route.getOrigin());
+        origin.setStopOrder(0);
+        origin.setDistanceFromStartKm(BigDecimal.ZERO);
+        origin.setMinutesFromStart(0);
+        stopRepository.save(origin);
+
+        RouteStop destination = new RouteStop();
+        destination.setRoute(route);
+        destination.setStopName(route.getDestination());
+        destination.setStopOrder(1);
+        destination.setDistanceFromStartKm(route.getDistanceKm());
+        destination.setMinutesFromStart(route.getDurationMinutes());
+        stopRepository.save(destination);
     }
 
     // ==========================================
