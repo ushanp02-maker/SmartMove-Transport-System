@@ -2,6 +2,7 @@
 package com.smartmove.backend.controller;
 
 import com.smartmove.backend.service.FeedbackService;
+import com.smartmove.backend.service.CurrentUserService;
 import com.smartmove.backend.service.FeedbackService.FeedbackProfile;
 import com.smartmove.backend.service.FeedbackService.PublicFeedback;
 import com.smartmove.backend.service.FeedbackService.CreateFeedbackRequest;
@@ -39,11 +40,14 @@ import java.util.Map;
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
+    private final CurrentUserService currentUserService;
 
     public FeedbackController(
-            FeedbackService feedbackService
+            FeedbackService feedbackService,
+            CurrentUserService currentUserService
     ) {
         this.feedbackService = feedbackService;
+        this.currentUserService = currentUserService;
     }
 
     // ==========================================
@@ -347,12 +351,13 @@ public class FeedbackController {
             @PathVariable String feedbackId,
             @Valid @RequestBody ModerateFeedbackPayload request
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 feedbackService.moderateFeedback(
                         feedbackId,
                         new ModerateFeedbackRequest(
                                 request.status(),
-                                request.moderatorUserId(),
+                                currentUserService.getCurrentAccountId(),
                                 request.moderationNotes()
                         )
                 )
@@ -369,11 +374,12 @@ public class FeedbackController {
             @PathVariable String feedbackId,
             @Valid @RequestBody AdminResponsePayload request
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 feedbackService.respondToFeedback(
                         feedbackId,
                         new AdminResponseRequest(
-                                request.adminUserId(),
+                                currentUserService.getCurrentAccountId(),
                                 request.response()
                         )
                 )
@@ -466,10 +472,6 @@ public class FeedbackController {
             @NotBlank(message = "Moderation status is required")
             String status,
 
-            @NotNull(message = "Moderator user ID is required")
-            @Positive
-            Long moderatorUserId,
-
             @Size(max = 1000)
             String moderationNotes
 
@@ -477,10 +479,6 @@ public class FeedbackController {
     }
 
     public record AdminResponsePayload(
-
-            @NotNull(message = "Admin user ID is required")
-            @Positive
-            Long adminUserId,
 
             @NotBlank(message = "Response is required")
             @Size(max = 2000)
