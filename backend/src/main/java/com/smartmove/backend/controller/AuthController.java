@@ -73,7 +73,7 @@ public class AuthController {
     // ==========================================
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<SessionResponse> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest
     ) {
