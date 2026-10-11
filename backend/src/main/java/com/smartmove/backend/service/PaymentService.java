@@ -35,17 +35,20 @@ public class PaymentService {
             );
 
     private final BookingPaymentPlsqlGateway plsql;
+    private final PortalNotificationService notifications;
     private final PaymentRepository paymentRepository;
     private final BookingRepository bookingRepository;
 
     public PaymentService(
             PaymentRepository paymentRepository,
             BookingRepository bookingRepository,
-            BookingPaymentPlsqlGateway plsql
+            BookingPaymentPlsqlGateway plsql,
+            PortalNotificationService notifications
     ) {
         this.paymentRepository = paymentRepository;
         this.bookingRepository = bookingRepository;
         this.plsql = plsql;
+        this.notifications = notifications;
     }
 
     // ==========================================
@@ -183,7 +186,10 @@ public class PaymentService {
     public PaymentProfile completePayment(Long paymentId) {
         if (paymentId == null) throw badRequest("Payment ID is required");
         plsql.completePayment(paymentId);
-        return toProfile(getPaymentById(paymentId));
+        var saved = getPaymentById(paymentId);
+        notifications.notifyPassenger(saved.getBooking().getPassenger().getId(), "Payment completed",
+            "Payment #" + paymentId + " was completed.", "PAYMENT", "/passenger/payments");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -197,7 +203,10 @@ public class PaymentService {
     ) {
         if (paymentId == null) throw badRequest("Payment ID is required");
         plsql.failPayment(paymentId,reason);
-        return toProfile(getPaymentById(paymentId));
+        var saved = getPaymentById(paymentId);
+        notifications.notifyPassenger(saved.getBooking().getPassenger().getId(), "Payment failed",
+            "Payment #" + paymentId + " was failed.", "PAYMENT", "/passenger/payments");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -212,7 +221,10 @@ public class PaymentService {
         if (paymentId == null) throw badRequest("Payment ID is required");
         if (request == null || request.amount() == null) throw badRequest("Refund amount is required");
         plsql.refundPayment(paymentId,request.amount(),request.reason());
-        return toProfile(getPaymentById(paymentId));
+        var saved = getPaymentById(paymentId);
+        notifications.notifyPassenger(saved.getBooking().getPassenger().getId(), "Payment refunded",
+            "Payment #" + paymentId + " was refunded.", "PAYMENT", "/passenger/payments");
+        return toProfile(saved);
     }
 
     // ==========================================
