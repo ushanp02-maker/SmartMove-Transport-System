@@ -33,11 +33,24 @@ public class DriverController {
     currentUser.requireAdmin();
     return drivers.updateDriver(id, new DriverService.UpdateDriverRequest(input.name(), input.phone(), input.licenseNumber(), input.licenseExpiry(), input.experienceYears()));
   }
-  @PatchMapping("/{id}/status")
-  public DriverService.DriverProfile changeStatus(@PathVariable Long id, @RequestBody java.util.Map<String,String> input) {
-    currentUser.requireAdmin();
-    return drivers.updateDriverStatus(id, input.get("newStatus"));
+ @PatchMapping("/{id}/status")
+public DriverService.DriverProfile changeStatus(
+    @PathVariable Long id,
+    @RequestBody java.util.Map<String, String> input) {
+
+  currentUser.requireAdmin();
+
+  String newStatus = input.get("newStatus");
+
+  if (newStatus == null || newStatus.isBlank()) {
+    throw new org.springframework.web.server.ResponseStatusException(
+        HttpStatus.BAD_REQUEST,
+        "Driver status is required"
+    );
   }
+
+  return drivers.updateDriverStatus(id, newStatus);
+}
   @GetMapping
   public List<DriverService.DriverProfile> list() {
     currentUser.requireAdmin();
