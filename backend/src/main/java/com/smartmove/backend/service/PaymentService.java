@@ -447,6 +447,25 @@ public class PaymentService {
     }
 
     // ==========================================
+    // ADMIN: REMOVE UNSUCCESSFUL PAYMENT ATTEMPT
+    // ==========================================
+
+    @Transactional
+    public void deleteUnsuccessfulPayment(Long paymentId) {
+        Payment payment = lockPayment(paymentId);
+        String status = payment.getStatus() == null ? "" : payment.getStatus().toUpperCase(Locale.ROOT);
+        if (!Set.of("PENDING", "FAILED").contains(status)) {
+            throw conflict("Completed or refunded payments must be retained for financial history");
+        }
+        // Do not delete a pending attempt if the booking is already settled.
+        Booking booking = lockBooking(payment.getBooking().getId());
+        if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
+            throw conflict("Only payments for pending bookings can be deleted");
+        }
+        paymentRepository.delete(payment);
+    }
+
+    // ==========================================
     // ADMIN: ALL PAYMENTS
     // ==========================================
 
