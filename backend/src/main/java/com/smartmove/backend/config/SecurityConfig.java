@@ -554,6 +554,20 @@ public class SecurityConfig {
                                 "/api/tracking/**"
                         ).hasAnyRole(ALL_ROLES)
 
+                        // MANUAL TRIP CHECKPOINTS
+                        // ----------------------------------
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/trip-checkpoints/**"
+                        ).hasAnyRole(ALL_ROLES)
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/trip-checkpoints/**"
+                        ).hasAnyRole(STAFF_ROLES)
+
+                        // ----------------------------------
                         // ----------------------------------
                         // TRIP STATUS
                         // ----------------------------------
