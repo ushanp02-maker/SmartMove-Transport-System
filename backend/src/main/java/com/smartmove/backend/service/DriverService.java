@@ -168,7 +168,13 @@ public class DriverService {
 
         driver.setName(name);
         driver.setEmail(email);
-        driver.setPhone(normalizeOptional(request.phone()));
+
+        driver.setPhone(
+        request.phone() == null || request.phone().isBlank()
+                 ? null
+                 : validatePhoneNumber(request.phone())
+        );
+
         driver.setLicenseNumber(licenseNumber);
         driver.setLicenseExpiry(request.licenseExpiry());
         driver.setExperienceYears(request.experienceYears());
@@ -200,10 +206,12 @@ public class DriverService {
         }
 
         if (request.phone() != null) {
-            driver.setPhone(
-                    normalizeOptional(request.phone())
-            );
-        }
+                driver.setPhone(
+                        request.phone().isBlank()
+                         ? null
+                        : validatePhoneNumber(request.phone())
+                );
+    }
 
         if (request.licenseNumber() != null) {
             String licenseNumber = requireText(
@@ -542,6 +550,18 @@ public class DriverService {
         }
 
         return value.trim();
+    }
+
+    private String validatePhoneNumber(String phone) {
+    String value = requireText(phone, "Phone number");
+
+    if (!value.matches("^(?:0[0-9]{9}|\\+94[0-9]{9})$")) {
+        throw badRequest(
+            "Invalid phone number. Use 0XXXXXXXXX or +94XXXXXXXXX"
+        );
+    }
+
+    return value;
     }
 
     private boolean containsIgnoreCase(
