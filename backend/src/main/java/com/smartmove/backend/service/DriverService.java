@@ -126,9 +126,7 @@ public class DriverService {
             throw badRequest("Driver details are required");
         }
 
-        String name = requireText(
-                request.name(), "Driver name"
-        );
+        String name = validateDriverName(request.name());
 
         String email = normalizeEmail(request.email());
 
@@ -193,7 +191,7 @@ public class DriverService {
 
         if (request.name() != null) {
             driver.setName(
-                    requireText(request.name(), "Driver name")
+                    validateDriverName(request.name())
             );
         }
 
@@ -521,6 +519,23 @@ public class DriverService {
                     "Experience years must be between 0 and 80"
             );
         }
+    }
+
+    // ==========================================
+    // IMPROVEMENT 8: DRIVER NAME LENGTH VALIDATION
+    // ==========================================
+
+    private String validateDriverName(String name) {
+
+        String value = requireText(name, "Driver name");
+
+        if (value.length() < 2 || value.length() > 100) {
+            throw badRequest(
+                    "Driver name must contain between 2 and 100 characters"
+            );
+        }
+
+        return value;
     }
 
     // ==========================================
