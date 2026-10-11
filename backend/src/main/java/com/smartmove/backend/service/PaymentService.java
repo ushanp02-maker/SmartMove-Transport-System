@@ -34,15 +34,19 @@ public class PaymentService {
                     "CARD_SIMULATED"
             );
 
+    private final BookingPaymentPlsqlGateway plsql;
     private final PaymentRepository paymentRepository;
+    private final BookingPaymentPlsqlGateway plsql;
     private final BookingRepository bookingRepository;
 
     public PaymentService(
             PaymentRepository paymentRepository,
-            BookingRepository bookingRepository
+            BookingRepository bookingRepository,
+            BookingPaymentPlsqlGateway plsql
     ) {
         this.paymentRepository = paymentRepository;
         this.bookingRepository = bookingRepository;
+        this.plsql = plsql;
     }
 
     // ==========================================
@@ -164,82 +168,12 @@ public class PaymentService {
     public PaymentProfile createPayment(
             CreatePaymentRequest request
     ) {
-        if (request == null
-                || request.bookingId() == null) {
-            throw badRequest(
-                    "Booking ID is required"
-            );
+        if (request == null || request.bookingId() == null) {
+            throw badRequest("Booking ID is required");
         }
-
-        Booking booking = lockBooking(
-                request.bookingId()
-        );
-
-        if (!"PENDING".equalsIgnoreCase(
-                booking.getStatus()
-        )) {
-            throw conflict(
-                    "Only pending bookings can receive a new payment"
-            );
-        }
-
-        if (!"SCHEDULED".equalsIgnoreCase(
-                booking.getTrip().getStatus()
-        ) || !booking.getTrip()
-                .getDepartureTime()
-                .isAfter(LocalDateTime.now())) {
-            throw conflict(
-                    "This booking is no longer payable"
-            );
-        }
-
-        String method = normalizePaymentMethod(
-                request.paymentMethod()
-        );
-
-        List<Payment> existingPayments =
-                paymentRepository
-                        .findByBookingIdOrderByCreatedAtDesc(
-                                booking.getId()
-                        );
-
-        boolean activePayment = existingPayments.stream()
-                .anyMatch(payment ->
-                        "PENDING".equalsIgnoreCase(
-                                payment.getStatus()
-                        )
-                                || "COMPLETED".equalsIgnoreCase(
-                                payment.getStatus()
-                        )
-                );
-
-        if (activePayment) {
-            throw conflict(
-                    "An active or completed payment already exists for this booking"
-            );
-        }
-
-        Payment payment = new Payment();
-
-        payment.setBooking(booking);
-        payment.setAmount(
-                booking.getTotalFare()
-                        .setScale(
-                                2,
-                                RoundingMode.HALF_UP
-                        )
-        );
-        payment.setCurrency(CURRENCY);
-        payment.setPaymentMethod(method);
-        payment.setStatus("PENDING");
-        payment.setTransactionReference(
-                generateTransactionReference()
-        );
-        payment.setNotes(request.notes());
-
-        return toProfile(
-                paymentRepository.save(payment)
-        );
+        String method = normalizePaymentMethod(request.paymentMethod());
+        Long id = plsql.createPayment(request.bookingId(),method,request.notes());
+        return toProfile(getPaymentById(id));
     }
 
     // ==========================================
@@ -248,53 +182,9 @@ public class PaymentService {
 
     @Transactional
     public PaymentProfile completePayment(Long paymentId) {
-        Payment payment = lockPayment(paymentId);
-
-        if ("COMPLETED".equalsIgnoreCase(
-                payment.getStatus()
-        )) {
-            return toProfile(payment);
-        }
-
-        if (!"PENDING".equalsIgnoreCase(
-                payment.getStatus()
-        )) {
-            throw conflict(
-                    "Only pending payments can be completed"
-            );
-        }
-
-        Booking booking = lockBooking(
-                payment.getBooking().getId()
-        );
-
-        if (!"PENDING".equalsIgnoreCase(
-                booking.getStatus()
-        )) {
-            throw conflict(
-                    "The booking is no longer awaiting payment"
-            );
-        }
-
-        if (!"SCHEDULED".equalsIgnoreCase(
-                booking.getTrip().getStatus()
-        ) || !booking.getTrip()
-                .getDepartureTime()
-                .isAfter(LocalDateTime.now())) {
-            throw conflict(
-                    "Trip departure has passed or the trip is unavailable"
-            );
-        }
-
-        payment.setStatus("COMPLETED");
-        payment.setPaymentDate(LocalDateTime.now());
-
-        booking.setStatus("CONFIRMED");
-
-        bookingRepository.save(booking);
-        paymentRepository.save(payment);
-
-        return toProfile(payment);
+        if (paymentId == null) throw badRequest("Payment ID is required");
+        plsql.completePayment(paymentId);
+        return toProfile(getPaymentById(paymentId));
     }
 
     // ==========================================
@@ -306,26 +196,9 @@ public class PaymentService {
             Long paymentId,
             String reason
     ) {
-        Payment payment = lockPayment(paymentId);
-
-        if (!"PENDING".equalsIgnoreCase(
-                payment.getStatus()
-        )) {
-            throw conflict(
-                    "Only pending payments can be marked as failed"
-            );
-        }
-
-        payment.setStatus("FAILED");
-        payment.setNotes(
-                reason == null || reason.isBlank()
-                        ? "Simulated payment failed"
-                        : reason.trim()
-        );
-
-        return toProfile(
-                paymentRepository.save(payment)
-        );
+        if (paymentId == null) throw badRequest("Payment ID is required");
+        plsql.failPayment(paymentId,reason);
+        return toProfile(getPaymentById(paymentId));
     }
 
     // ==========================================
@@ -337,67 +210,10 @@ public class PaymentService {
             Long paymentId,
             RefundRequest request
     ) {
-        if (request == null
-                || request.amount() == null) {
-            throw badRequest(
-                    "Refund amount is required"
-            );
-        }
-
-        Payment payment = lockPayment(paymentId);
-
-        if (!"COMPLETED".equalsIgnoreCase(
-                payment.getStatus()
-        )) {
-            throw conflict(
-                    "Only completed payments can be refunded"
-            );
-        }
-
-        BigDecimal amount = request.amount()
-                .setScale(
-                        2,
-                        RoundingMode.HALF_UP
-                );
-
-        if (amount.signum() <= 0
-                || amount.compareTo(
-                payment.getAmount()
-        ) > 0) {
-            throw badRequest(
-                    "Refund must be greater than zero and cannot exceed the payment amount"
-            );
-        }
-
-        Booking booking = lockBooking(
-                payment.getBooking().getId()
-        );
-
-        if ("COMPLETED".equalsIgnoreCase(
-                booking.getTrip().getStatus()
-        )) {
-            throw conflict(
-                    "Completed trips cannot be refunded through this workflow"
-            );
-        }
-
-        payment.setStatus("REFUNDED");
-        payment.setRefundAmount(amount);
-        payment.setRefundedAt(LocalDateTime.now());
-        payment.setNotes(
-                request.reason() == null
-                        ? "Refund processed"
-                        : request.reason().trim()
-        );
-
-        // A refund releases the reserved seats.
-        booking.setStatus("CANCELLED");
-        booking.setCancelledAt(LocalDateTime.now());
-
-        bookingRepository.save(booking);
-        paymentRepository.save(payment);
-
-        return toProfile(payment);
+        if (paymentId == null) throw badRequest("Payment ID is required");
+        if (request == null || request.amount() == null) throw badRequest("Refund amount is required");
+        plsql.refundPayment(paymentId,request.amount(),request.reason());
+        return toProfile(getPaymentById(paymentId));
     }
 
     // ==========================================
@@ -452,17 +268,8 @@ public class PaymentService {
 
     @Transactional
     public void deleteUnsuccessfulPayment(Long paymentId) {
-        Payment payment = lockPayment(paymentId);
-        String status = payment.getStatus() == null ? "" : payment.getStatus().toUpperCase(Locale.ROOT);
-        if (!Set.of("PENDING", "FAILED").contains(status)) {
-            throw conflict("Completed or refunded payments must be retained for financial history");
-        }
-        // Do not delete a pending attempt if the booking is already settled.
-        Booking booking = lockBooking(payment.getBooking().getId());
-        if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
-            throw conflict("Only payments for pending bookings can be deleted");
-        }
-        paymentRepository.delete(payment);
+        if (paymentId == null) throw badRequest("Payment ID is required");
+        plsql.deletePayment(paymentId);
     }
 
     // ==========================================
