@@ -35,6 +35,7 @@ public class BookingService {
             Set.of("PENDING", "CONFIRMED");
 
     private final BookingPaymentPlsqlGateway plsql;
+    private final PortalNotificationService notifications;
     private final BookingRepository bookingRepository;
     private final PassengerRepository passengerRepository;
     private final TripRepository tripRepository;
@@ -47,7 +48,8 @@ public class BookingService {
             TripRepository tripRepository,
             RouteStopRepository stopRepository,
             PaymentRepository paymentRepository,
-            BookingPaymentPlsqlGateway plsql
+            BookingPaymentPlsqlGateway plsql,
+            PortalNotificationService notifications
     ) {
         this.bookingRepository = bookingRepository;
         this.passengerRepository = passengerRepository;
@@ -55,6 +57,7 @@ public class BookingService {
         this.stopRepository = stopRepository;
         this.paymentRepository = paymentRepository;
         this.plsql = plsql;
+        this.notifications = notifications;
     }
 
     // ==========================================
@@ -290,7 +293,11 @@ public class BookingService {
         }
         Long id = plsql.createBooking(request.passengerId(),request.tripId(),
                 request.boardingStopId(),request.destinationStopId(),request.seatCount());
-        return toProfile(getBookingById(id));
+        var saved = getBookingById(id);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Booking created",
+            "Booking #" + id + " was created. Complete payment to confirm your seat.",
+            "BOOKING", "/passenger/bookings");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -303,7 +310,10 @@ public class BookingService {
     ) {
         if (bookingId == null) throw badRequest("Booking ID is required");
         plsql.confirmBooking(bookingId);
-        return toProfile(getBookingById(bookingId));
+        var saved = getBookingById(bookingId);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Booking confirmed",
+            "Your booking #" + bookingId + " is confirmed.", "BOOKING", "/passenger/bookings");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -316,7 +326,10 @@ public class BookingService {
     ) {
         if (bookingId == null) throw badRequest("Booking ID is required");
         plsql.cancelBooking(bookingId);
-        return toProfile(getBookingById(bookingId));
+        var saved = getBookingById(bookingId);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Booking cancelled",
+            "Your booking #" + bookingId + " was cancelled.", "BOOKING", "/passenger/bookings");
+        return toProfile(saved);
     }
 
     // ==========================================
