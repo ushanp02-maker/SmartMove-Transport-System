@@ -45,7 +45,7 @@ export default function ApiAdminEntity({ entity }) {
   const open = record => {
     setEditing(record || {})
     setActionError('')
-    setValues(Object.fromEntries(config.fields.map(([key,,type]) => [key, formatInitial(record?.[key], type)])))
+    setValues(Object.fromEntries(config.fields.map(([key,,type]) => [key, key === 'serviceType' && entity === 'routes' ? (record?.[key] === 'STAFF' ? 'STAFF' : 'STANDARD') : formatInitial(record?.[key], type)])))
   }
   const overlaps = trip => {
     if (trip.id === editing?.id || ['CANCELLED','COMPLETED'].includes(String(trip.status || '').toUpperCase())) return false
@@ -54,7 +54,7 @@ export default function ApiAdminEntity({ entity }) {
     return Date.parse(trip.departureTime) < end && Date.parse(trip.arrivalTime) > start
   }
   const resourceAvailable = (item, key) => {
-    if (key === 'routeId') return String(item.status || '').toUpperCase() === 'ACTIVE' || String(item.id) === String(values[key])
+    if (key === 'routeId') return (['STANDARD','STAFF'].includes(String(item.serviceType || '').toUpperCase()) && String(item.status || '').toUpperCase() === 'ACTIVE') || String(item.id) === String(values[key])
     const status = String(item.status || '').toUpperCase()
     if (status !== 'AVAILABLE' && String(item.id) !== String(values[key])) return false
     return !scheduledTrips.some(trip => String(trip[key]) === String(item.id) && overlaps(trip))
@@ -105,7 +105,7 @@ export default function ApiAdminEntity({ entity }) {
     catch (err) { setActionError(errorText(err)) }
     finally { setSaving(false) }
   }
-  const list = Array.isArray(items) ? items : items?.content || []
+  const list = (Array.isArray(items) ? items : items?.content || []).filter(item => entity !== 'routes' || String(item.serviceType || '').toUpperCase() !== 'CUSTOM')
   const filtered = list.filter(item => {
     const text = JSON.stringify(item).toLowerCase()
     const status = String(item.status || '').toUpperCase()
@@ -118,7 +118,7 @@ export default function ApiAdminEntity({ entity }) {
   const shown = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const titles = { routes: 'Routes', trips: 'Trip scheduling', vehicles: 'Vehicles', maintenance: 'Vehicle maintenance', payments: 'Payments' }
   const summary = entity === 'routes' ? [
-    ['Total routes', list.length], ['Commuter routes', list.filter(x => /COMMUTER/i.test(x.serviceType || '')).length], ['Staff routes', list.filter(x => /STAFF/i.test(x.serviceType || '')).length], ['Active routes', list.filter(x => String(x.status || '').toUpperCase() === 'ACTIVE').length]
+    ['Total routes', list.length], ['Standard routes', list.filter(x => /STANDARD|COMMUTER/i.test(x.serviceType || '')).length], ['Staff routes', list.filter(x => /STAFF/i.test(x.serviceType || '')).length], ['Active routes', list.filter(x => String(x.status || '').toUpperCase() === 'ACTIVE').length]
   ] : entity === 'trips' ? [
     ['Total trips', list.length], ['Scheduled', list.filter(x => /SCHEDULED/i.test(x.status || '')).length], ['Ongoing', list.filter(x => /ONGOING|IN_PROGRESS/i.test(x.status || '')).length], ['Completed', list.filter(x => /COMPLETED/i.test(x.status || '')).length]
   ] : entity === 'vehicles' ? [
@@ -133,6 +133,7 @@ export default function ApiAdminEntity({ entity }) {
     return pretty(record[key])
   }
   const renderInput = ([key,title,type]) => {
+    if (entity === 'routes' && key === 'serviceType') return <label key={key}>{title}<select required value={values.serviceType || 'STANDARD'} onChange={event => setValues(old => ({ ...old, serviceType: event.target.value }))}><option value="STANDARD">Standard transport</option><option value="STAFF">Staff transport</option></select></label>
     const choices = entity === 'trips' && (key === 'routeId' ? options.routes : key === 'vehicleId' ? options.vehicles : key === 'driverId' ? options.drivers : null)
     return <label key={key}>{title}{choices ? <select value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}><option value="">Select {title.toLowerCase()}</option>{(Array.isArray(choices) ? choices : []).filter(item => resourceAvailable(item,key)).map(item => <option key={item.id} value={item.id}>{item.name || item.fullName || item.registrationNumber || item.username || title} — ID {item.id}</option>)}</select> : <input type={type || 'text'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))} step={type === 'number' ? 'any' : undefined} />}</label>
   }
