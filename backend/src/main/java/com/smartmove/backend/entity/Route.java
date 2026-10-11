@@ -32,7 +32,7 @@ public class Route {
     private BigDecimal baseFare;
 
     @Column(name = "SERVICE_TYPE", nullable = false, length = 30)
-    private String serviceType = "COMMUTER";
+    private String serviceType = "STANDARD";
 
     @Column(name = "STATUS", nullable = false, length = 30)
     private String status = "ACTIVE";
@@ -43,7 +43,7 @@ public class Route {
     @PrePersist
     public void onCreate() {
         if (serviceType == null) {
-            serviceType = "COMMUTER";
+            serviceType = "STANDARD";
         }
 
         if (status == null) {
