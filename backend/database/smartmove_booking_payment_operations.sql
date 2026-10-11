@@ -224,6 +224,7 @@ CREATE OR REPLACE PACKAGE BODY sm_booking_payments AS
       FROM bookings b JOIN trips t ON t.id=b.trip_id
       WHERE b.id=v_booking_id FOR UPDATE OF b.status;
     SELECT status INTO v_status FROM payments WHERE id=p_payment_id FOR UPDATE;
+    IF v_status='COMPLETED' THEN RETURN; END IF;
     IF v_status<>'PENDING' OR v_booking_status<>'PENDING' THEN
       RAISE_APPLICATION_ERROR(-20107,'Only pending bookings and payments can be completed');
     END IF;
