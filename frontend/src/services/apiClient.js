@@ -25,6 +25,8 @@ export const dataMode =
 
 // Credentials exist only until logout or page refresh.
 let basicCredentials = null
+let csrfToken = null
+export function setCsrfToken(token) { csrfToken = token || null }
 
 export function setApiCredentials(username, password) {
   if (!username || !password) {
@@ -39,6 +41,7 @@ export function setApiCredentials(username, password) {
 
 export function clearApiCredentials() {
   basicCredentials = null
+  csrfToken = null
 }
 
 export function hasApiCredentials() {
@@ -86,7 +89,7 @@ export async function request(path, options = {}) {
 
   const headers = {
     Accept: 'application/json',
-    ...buildAuthorizationHeader(),
+    ...(csrfToken && !['GET','HEAD','OPTIONS'].includes((options.method || 'GET').toUpperCase()) ? { 'X-CSRF-Token': csrfToken } : {}),
     ...(options.body && !(options.body instanceof FormData)
       ? { 'Content-Type': 'application/json' }
       : {}),
@@ -99,6 +102,7 @@ export async function request(path, options = {}) {
     response = await fetch(`${base}${endpoint}`, {
       ...options,
       headers,
+      credentials: 'include',
     })
   } catch {
     throw new Error(
@@ -152,7 +156,7 @@ export function demoOnly(operation) {
 export async function downloadVehicleFile(fileId) {
   if (!isApiMode() || !API_BASE_URL) throw new Error('API mode is required')
   const response = await fetch(API_BASE_URL.replace(/\/$/, '') + '/vehicle-documents/files/' + encodeURIComponent(fileId), {
-    headers: buildAuthorizationHeader(),
+    credentials: 'include',
   })
   if (!response.ok) throw new Error('Unable to open the selected file (' + response.status + ')')
   return response.blob()
