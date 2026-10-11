@@ -42,7 +42,7 @@ public class TripCheckpointController {
         if(users.hasAnyRole(UserRole.ADMIN,UserRole.SUPER_ADMIN))return;
         if(users.hasRole(UserRole.DRIVER) && t.getDriver()!=null
                 && users.getCurrentDriverId().equals(t.getDriver().getId()))return;
-        if(users.hasRole(UserRole.PASSENG) && bookings.findByTripId(t.getId()).stream().anyMatch(b ->
+        if(users.hasRole(UserRole.PASSENGER) && bookings.findByTripId(t.getId()).stream().anyMatch(b ->
                 b.getPassenger().getId().equals(users.getCurrentPassengerId())
                 && "CONFIRMED".equalsIgnoreCase(b.getStatus())))return;
         throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Not authorized to view this trip");
