@@ -22,9 +22,9 @@ export const registerPassenger = profile =>
         message: 'Use AppContext demo passenger registration.',
       })
 
-// The current Spring Boot backend uses stateless HTTP Basic.
-// There is no server-side logout endpoint to invoke.
-export const logout = () => Promise.resolve(null)
+export const logout = () => isApiMode() ? request('/auth/logout', { method: 'POST' }) : Promise.resolve(null)
+
+export const restoreSession = () => request('/auth/session')
 
 export const getCurrentAccount = () =>
   isApiMode()
