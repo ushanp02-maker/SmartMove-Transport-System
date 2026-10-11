@@ -26,13 +26,7 @@ public class RouteService {
             Set.of("ACTIVE", "INACTIVE", "SUSPENDED");
 
     private static final Set<String> VALID_SERVICE_TYPES =
-            Set.of(
-                    "COMMUTER",
-                    "EXPRESS",
-                    "STAFF",
-                    "PRIVATE",
-                    "SPECIAL"
-            );
+            Set.of("STANDARD", "STAFF");
 
     private final RouteRepository routeRepository;
     private final RouteStopRepository stopRepository;
@@ -564,6 +558,7 @@ public class RouteService {
     public List<RouteProfile> getAllRoutes() {
         return routeRepository.findAll()
                 .stream()
+                .filter(route -> !"CUSTOM".equalsIgnoreCase(route.getServiceType()))
                 .map(this::toProfile)
                 .toList();
     }
@@ -581,6 +576,7 @@ public class RouteService {
         return routeRepository
                 .findByStatusIgnoreCase("ACTIVE")
                 .stream()
+                .filter(route -> !"CUSTOM".equalsIgnoreCase(route.getServiceType()))
                 .map(this::toProfile)
                 .toList();
     }
@@ -946,7 +942,7 @@ public class RouteService {
     ) {
         String type = value == null
                 || value.isBlank()
-                ? "COMMUTER"
+                ? "STANDARD"
                 : value.trim().toUpperCase(Locale.ROOT);
 
         if (!VALID_SERVICE_TYPES.contains(type)) {
