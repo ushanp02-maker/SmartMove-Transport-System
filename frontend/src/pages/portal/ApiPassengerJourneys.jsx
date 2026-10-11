@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { request } from '../../services/apiClient'
-import { listUpcomingTrips, getTrip } from '../../services/tripService'
+import { getTrip } from '../../services/tripService'
 import { createBooking, getBookingQuote, getSeatAvailability, listPassengerBookings, cancelBooking } from '../../services/bookingService'
 import { useAppData } from '../../services/useAppData'
 import { formatLkr } from '../../services/formatters'
