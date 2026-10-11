@@ -51,9 +51,16 @@ public DriverService.DriverProfile changeStatus(
 
   return drivers.updateDriverStatus(id, newStatus);
 }
-  @GetMapping
-  public List<DriverService.DriverProfile> list() {
+@GetMapping
+public List<DriverService.DriverProfile> list() {
     currentUser.requireAdmin();
     return drivers.getAllDrivers();
-  }
+}
+@GetMapping("/search")
+public List<DriverService.DriverProfile> searchDrivers(
+        @RequestParam(required = false) String keyword
+) {
+    currentUser.requireAdmin();
+    return drivers.searchDrivers(keyword);
+}
 }
