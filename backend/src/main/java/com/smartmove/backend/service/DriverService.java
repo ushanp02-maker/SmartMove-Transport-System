@@ -539,7 +539,7 @@ public class DriverService {
     }
 
     // ==========================================
-    // DRIVER LICENSE NUMBER VALIDATION
+    // IMPROVEMENT 9: DRIVER LICENSE NUMBER LENGTH VALIDATION
     // ==========================================
 
     private String validateLicenseNumber(String licenseNumber) {
@@ -547,6 +547,12 @@ public class DriverService {
         String value = requireText(
                 licenseNumber, "License number"
         );
+
+        if (value.length() < 5 || value.length() > 20) {
+            throw badRequest(
+                    "License number must contain between 5 and 20 characters"
+            );
+        }
 
         if (!value.matches("^[A-Za-z0-9-]+$")) {
             throw badRequest(
