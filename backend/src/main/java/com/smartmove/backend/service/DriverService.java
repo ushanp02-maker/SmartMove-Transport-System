@@ -274,10 +274,14 @@ public class DriverService {
             );
         }
 
-        if ("AVAILABLE".equals(status)
+        // ==========================================
+        // IMPROVEMENT 10: EXPIRED LICENSE STATUS VALIDATION
+        // ==========================================
+
+        if (("AVAILABLE".equals(status) || "ON_TRIP".equals(status))
                 && isLicenseExpired(driver)) {
             throw badRequest(
-                    "Driver cannot be available with an expired license"
+                    "Driver cannot be AVAILABLE or ON_TRIP with an expired license"
             );
         }
 
