@@ -36,7 +36,6 @@ public class PaymentService {
 
     private final BookingPaymentPlsqlGateway plsql;
     private final PaymentRepository paymentRepository;
-    private final BookingPaymentPlsqlGateway plsql;
     private final BookingRepository bookingRepository;
 
     public PaymentService(
