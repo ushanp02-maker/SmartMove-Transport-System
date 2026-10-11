@@ -59,27 +59,9 @@ public class DriverLocationController {
     public ResponseEntity<LocationProfile> submitLocation(
             @Valid @RequestBody LocationUpdatePayload request
     ) {
+        currentUserService.requireDriver();
         throw new ResponseStatusException(HttpStatus.GONE,
                 "GPS tracking is disabled; use driver-confirmed route checkpoints");
-        currentUserService.requireDriver();
-
-        LocationProfile saved = locationService.submitLocation(
-                new SubmitLocationRequest(
-                        request.tripId(),
-                        request.latitude(),
-                        request.longitude(),
-                        request.accuracyMeters(),
-                        request.speedKmh(),
-                        request.headingDegrees(),
-                        request.altitudeMeters(),
-                        request.moving(),
-                        request.recordedAt()
-                )
-        );
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(saved);
     }
 
     // ==========================================
