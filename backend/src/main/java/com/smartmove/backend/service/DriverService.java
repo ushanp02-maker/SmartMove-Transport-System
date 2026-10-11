@@ -158,10 +158,10 @@ public class DriverService {
         driver.setName(name);
         driver.setEmail(email);
 
+    String phone = normalizeOptional(request.phone());
+
         driver.setPhone(
-                request.phone() == null || request.phone().isBlank()
-                        ? null
-                        : validatePhoneNumber(request.phone())
+        phone == null ? null : validatePhoneNumber(phone)
         );
 
         driver.setLicenseNumber(licenseNumber);
@@ -195,13 +195,13 @@ public class DriverService {
             );
         }
 
-        if (request.phone() != null) {
-            driver.setPhone(
-                    request.phone().isBlank()
-                            ? null
-                            : validatePhoneNumber(request.phone())
-            );
-        }
+      if (request.phone() != null) {
+    String phone = normalizeOptional(request.phone());
+
+    driver.setPhone(
+            phone == null ? null : validatePhoneNumber(phone)
+    );
+}
 
         if (request.licenseNumber() != null) {
 
