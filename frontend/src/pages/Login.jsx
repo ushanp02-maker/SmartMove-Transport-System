@@ -7,7 +7,7 @@ import { isApiMode } from '../services/apiClient'
 const accountHome = role => role === 'PASSENGER' ? '/passenger' : role === 'DRIVER' ? '/driver' : '/admin'
 
 export default function Login() {
-  const { session, currentUser, demoAuthenticate, authenticate, signOut } = useAppData()
+  const { session, currentUser, authLoading, demoAuthenticate, authenticate, signOut } = useAppData()
   const apiMode = isApiMode()
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -19,6 +19,8 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const allowSwitch = params.get('switch') === '1'
   const next = params.get('next') || ''
+
+  if (authLoading) return <main className="auth-page"><div className="page-loading">Restoring your session…</div></main>
 
   if (session && currentUser?.accountStatus === 'ACTIVE' && !allowSwitch && !busy) {
     return <Navigate to={accountHome(currentUser.role)} replace />
@@ -82,7 +84,7 @@ export default function Login() {
           {error&&<div className="auth-error" role="alert">{error}</div>}
           <button className="auth-submit" disabled={busy}>{busy?'Signing in…':<>Sign in <ArrowRight size={16}/></>}</button>
         </form>
-        <div className="demo-disclaimer"><ShieldCheck size={16}/><p>{apiMode ? <>Your credentials are verified by SmartMove. This browser keeps the authenticated connection only until the page is refreshed or you sign out.</> : <><strong>Demo access.</strong> Passwords are not verified in demo mode.</>}</p></div>
+        <div className="demo-disclaimer"><ShieldCheck size={16}/><p>{apiMode ? <>Your credentials are verified by SmartMove. Your session stays active across refreshes until it expires or you sign out.</> : <><strong>Demo access.</strong> Passwords are not verified in demo mode.</>}</p></div>
         <div className="auth-signup">New to SmartMove? <Link to={`/register${next?`?next=${encodeURIComponent(next)}`:''}`}>Create a passenger account</Link></div>
       </div>
       <footer className="auth-footer">© 2026 SmartMove Transport Solutions <span>{apiMode ? "SmartMove account sign-in" : "Demo experience"}</span></footer>
