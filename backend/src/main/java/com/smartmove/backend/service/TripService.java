@@ -44,6 +44,7 @@ public class TripService {
     private final MaintenanceRepository maintenanceRepository;
     private final BookingRepository bookingRepository;
     private final VehicleService vehicleService;
+    private final PortalNotificationService notifications;
 
     public TripService(
             TripRepository tripRepository,
@@ -52,7 +53,8 @@ public class TripService {
             DriverRepository driverRepository,
             MaintenanceRepository maintenanceRepository,
             BookingRepository bookingRepository,
-            VehicleService vehicleService
+            VehicleService vehicleService,
+            PortalNotificationService notifications
     ) {
         this.tripRepository = tripRepository;
         this.routeRepository = routeRepository;
@@ -61,6 +63,7 @@ public class TripService {
         this.maintenanceRepository = maintenanceRepository;
         this.bookingRepository = bookingRepository;
         this.vehicleService = vehicleService;
+        this.notifications = notifications;
     }
 
     // ==========================================
@@ -186,8 +189,10 @@ public class TripService {
                         : request.fare()
         );
         trip.setStatus("SCHEDULED");
-
-        return toProfile(tripRepository.save(trip));
+        var saved = tripRepository.save(trip);
+        notifications.notifyDriver(saved.getDriver().getId(), "Trip assigned",
+            "You have been assigned trip #" + saved.getId() + ".", "TRIP_ASSIGNMENT", "/driver/trips");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -296,8 +301,14 @@ public class TripService {
         trip.setDriver(driver);
         trip.setDepartureTime(departure);
         trip.setArrivalTime(arrival);
-
-        return toProfile(tripRepository.save(trip));
+        var saved = tripRepository.save(trip);
+        notifications.notifyDriver(saved.getDriver().getId(), "Trip schedule updated",
+            "Trip #" + saved.getId() + " has updated assignment or timing.", "TRIP_UPDATE", "/driver/trips");
+        bookingRepository.findByTripIdOrderByBookedAtDesc(tripId).stream()
+            .filter(b -> "PENDING".equalsIgnoreCase(b.getStatus()) || "CONFIRMED".equalsIgnoreCase(b.getStatus()))
+            .forEach(b -> notifications.notifyPassenger(b.getPassenger().getId(), "Trip schedule updated",
+                "Trip #" + tripId + " has updated timing or assignment.", "TRIP_UPDATE", "/passenger/bookings"));
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -362,8 +373,12 @@ public class TripService {
         }
 
         trip.setStatus(next);
-
-        return toProfile(tripRepository.save(trip));
+        var saved = tripRepository.save(trip);
+        if ("CANCELLED".equals(next)) {
+            notifications.notifyDriver(saved.getDriver().getId(), "Trip cancelled",
+                "Trip #" + tripId + " was cancelled.", "TRIP_UPDATE", "/driver/trips");
+        }
+        return toProfile(saved);
     }
 
     // ==========================================
