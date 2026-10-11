@@ -1,3 +1,4 @@
+
 package com.smartmove.backend.service;
 
 import com.smartmove.backend.entity.Driver;
@@ -131,7 +132,6 @@ public class DriverService {
 
         String email = normalizeEmail(request.email());
 
-        // NEW: License number format validation
         String licenseNumber = validateLicenseNumber(
                 request.licenseNumber()
         );
@@ -207,7 +207,6 @@ public class DriverService {
 
         if (request.licenseNumber() != null) {
 
-            // NEW: License number format validation
             String licenseNumber = validateLicenseNumber(
                     request.licenseNumber()
             );
@@ -492,11 +491,24 @@ public class DriverService {
                 );
     }
 
+    // ==========================================
+    // IMPROVEMENT 6: LICENSE EXPIRY VALIDATION
+    // ==========================================
+
     private void validateLicenseExpiry(LocalDate expiry) {
+
         if (expiry == null) {
             throw badRequest("License expiry date is required");
         }
+
+        if (expiry.isBefore(LocalDate.now())) {
+            throw badRequest("Driver license has already expired");
+        }
     }
+
+    // ==========================================
+    // EXPERIENCE VALIDATION
+    // ==========================================
 
     private void validateExperience(Integer years) {
         if (years != null && (years < 0 || years > 80)) {
@@ -507,7 +519,7 @@ public class DriverService {
     }
 
     // ==========================================
-    // NEW: DRIVER LICENSE NUMBER VALIDATION
+    // DRIVER LICENSE NUMBER VALIDATION
     // ==========================================
 
     private String validateLicenseNumber(String licenseNumber) {
