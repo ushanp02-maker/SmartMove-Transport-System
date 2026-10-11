@@ -649,7 +649,13 @@ public class OnDemandTripRequestService {
         entity.setAssignedTrip(trip);
         entity.setAssignedAt(LocalDateTime.now());
         entity.setStatus(ASSIGNED);
-        return toProfile(requestRepository.save(entity));
+        var saved = requestRepository.save(entity);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Custom trip assigned",
+            "Your custom trip request #" + saved.getId() + " is assigned.", "CUSTOM_TRIP", "/passenger/custom-trips");
+        if (saved.getAssignedTrip() != null && saved.getAssignedTrip().getDriver() != null)
+            notifications.notifyDriver(saved.getAssignedTrip().getDriver().getId(), "Custom trip assigned",
+                "You have been assigned trip #" + saved.getAssignedTrip().getId() + ".", "TRIP_ASSIGNMENT", "/driver/trips");
+        return toProfile(saved);
     }
 
     // ==========================================
