@@ -507,11 +507,16 @@ public class DriverService {
     }
 
     // ==========================================
-    // EXPERIENCE VALIDATION
+    // IMPROVEMENT 7: DRIVER EXPERIENCE VALIDATION
     // ==========================================
 
     private void validateExperience(Integer years) {
-        if (years != null && (years < 0 || years > 80)) {
+
+        if (years == null) {
+            throw badRequest("Driver experience years are required");
+        }
+
+        if (years < 0 || years > 80) {
             throw badRequest(
                     "Experience years must be between 0 and 80"
             );
