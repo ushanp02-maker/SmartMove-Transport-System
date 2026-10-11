@@ -3,10 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { BusFront, CalendarDays, ArrowRight, Navigation, Clock3, RefreshCw } from 'lucide-react'
 import '../smartmoveDashboards.css'
 import { request } from '../../services/apiClient'
-import { startTripTracking } from '../../services/trackingService'
 const asArray = value => Array.isArray(value) ? value : value?.content || []
 const idOf = trip => trip.tripId ?? trip.id
-const statusOf = trip => String(trip.status ?? trip.tripStatus ?? 'SCHEDULED').toUpperCase()
+const statusOf = trip => String(trip?.status ?? trip?.tripStatus ?? 'SCHEDULED').toUpperCase()
 const format = value => value == null ? '—' : typeof value === 'object' ? JSON.stringify(value) : String(value)
 function useDriverTrips() {
   const [trips,setTrips] = useState([])
@@ -37,11 +36,58 @@ export function ApiDriverTrips({dashboard=false}) {
 }
 export function ApiDriverTripDetails(){
   const {tripId}=useParams()
-  const [trip,setTrip]=useState(null),[error,setError]=useState(''),[gps,setGps]=useState({status:'stopped'}),[tracking,setTracking]=useState(false)
+  const [trip,setTrip]=useState(null)
+  const [progress,setProgress]=useState(null)
+  const [error,setError]=useState('')
+  const [busy,setBusy]=useState(false)
   const [reload,setReload]=useState(0)
-  useEffect(()=>{let active=true;request(`/trip-status/trips/${encodeURIComponent(tripId)}`).then(value=>{if(active){setTrip(value);setError('')}}).catch(err=>{if(active)setError(err.message)});return()=>{active=false}},[tripId,reload])
-  useEffect(()=>{if(!tracking||statusOf(trip)!=='IN_PROGRESS')return;return startTripTracking(tripId,setGps)},[tracking,tripId,trip])
-  const action=async name=>{try{await request(`/trip-status/driver/trips/${encodeURIComponent(tripId)}/${name}`,{method:'PATCH'});setReload(n=>n+1);setTracking(false)}catch(err){setError(err.message)}}
-  const status=statusOf(trip)
-  return <section className="portal-panel"><Link to="/driver/trips">← My trips</Link><h1>Trip #{tripId}</h1>{error&&<p className="auth-error" role="alert">{error}</p>}{trip&&<><p>Status: <strong>{status}</strong></p>{Object.entries(trip).map(([key,value])=><p key={key}><strong>{key}</strong>: {format(value)}</p>)}<div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{transitions[status]&&<button className="button button-primary" onClick={()=>action(transitions[status])}>{transitions[status]} trip</button>}{status==='IN_PROGRESS'&&<button className="button button-outline" onClick={()=>action('pause')}>Pause trip</button>}</div><h2>GPS sharing</h2><p>Only available during an active trip and while this browser page stays open. Location permission and a secure browser context are required.</p><button className="button button-primary" disabled={status!=='IN_PROGRESS'} onClick={()=>setTracking(value=>!value)}>{tracking?'Stop GPS':'Start GPS'}</button><p>{gps.message||gps.status}</p></>}</section>
+  useEffect(()=>{
+    let active=true
+    Promise.all([request(`/trip-status/trips/${encodeURIComponent(tripId)}`),request(`/trip-checkpoints/${encodeURIComponent(tripId)}`)])
+      .then(([t,p])=>{if(active){setTrip(t);setProgress(p);setError('')}})
+      .catch(e=>{if(active)setError(e.message)})
+    return()=>{active=false}
+  },[tripId,reload])
+  const action=async name=>{
+    setBusy(true);setError('')
+    try{await request(`/trip-status/driver/trips/${encodeURIComponent(tripId)}/${name}`,{method:'PATCH'});setReload(n=>n+1)}
+    catch(e){setError(e.message)}finally{setBusy(false)}
+  }
+  const confirm=async stopId=>{
+    setBusy(true);setError('')
+    try{await request(`/trip-checkpoints/${encodeURIComponent(tripId)}/confirm`,{method:'POST',body:JSON.stringify({stopId})});setReload(n=>n+1)}
+    catch(e){setError(e.message)}finally{setBusy(false)}
+  }
+  const status=trip ? statusOf(trip) : ''
+  const next=progress?.stops?.[progress.confirmed?.length || 0]
+  return <section className="portal-panel">
+    <Link to="/driver/trips">← My trips</Link>
+    <h1>Trip #{tripId}</h1>
+    {error&&<p className="auth-error" role="alert">{error}</p>}
+    {!trip&&!error&&<p>Loading trip details…</p>}
+    {trip&&<>
+      <p>Status: <strong>{status}</strong></p>
+      <p>Scheduled departure: {format(trip.scheduledDeparture)} · Scheduled arrival: {format(trip.scheduledArrival)}</p>
+      <p>Route #{trip.routeId} · Vehicle #{trip.vehicleId}</p>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        {transitions[status]&&<button className="button button-primary" disabled={busy} onClick={()=>action(transitions[status])}>{transitions[status]} trip</button>}
+        {status==='IN_PROGRESS'&&<button className="button button-outline" disabled={busy} onClick={()=>action('pause')}>Pause trip</button>}
+      </div>
+      <h2>Route stop check-in</h2>
+      <p>No GPS is collected. After physically reaching a stop, tick its circle to update passengers. Stops must be confirmed in order.</p>
+      {progress?.stops?.length ? <div style={{display:'grid',gap:12}}>
+        {progress.stops.map((stop,index)=>{
+          const done=index<(progress.confirmed?.length||0)
+          const current=next?.id===stop.id
+          return <label key={stop.id} style={{display:'flex',alignItems:'center',gap:12,padding:12,border:'1px solid #d4e3da',borderRadius:10}}>
+            <input type="checkbox" checked={done} disabled={done||!current||status!=='IN_PROGRESS'||busy}
+              onChange={()=>{if(window.confirm(`Confirm that you have reached ${stop.name}?`))confirm(stop.id)}}/>
+            <span><strong>{stop.name}</strong> · Stop {index+1} {done?'— reached':current&&status==='IN_PROGRESS'?'— next stop':''}</span>
+          </label>
+        })}
+      </div> : <p>Loading route stops…</p>}
+      {status==='IN_PROGRESS'&&next&&<p>Next check-in: <strong>{next.name}</strong></p>}
+      {status==='IN_PROGRESS'&&!next&&<p>All route stops confirmed. You can complete the trip.</p>}
+    </>}
+  </section>
 }
