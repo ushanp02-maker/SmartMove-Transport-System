@@ -473,7 +473,7 @@ public class FeedbackController {
             @Positive
             Long moderatorUserId,
 
-            @Size(max = 1000)
+            @Size(min = 5, max = 1000)
             String moderationNotes
 
     ) {
