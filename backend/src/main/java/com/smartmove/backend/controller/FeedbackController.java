@@ -424,6 +424,7 @@ public class FeedbackController {
             @Size(max = 3000)
             String comment,
 
+            @Size(max = 50)
             String category
 
     ) {
@@ -459,6 +460,7 @@ public class FeedbackController {
             @Pattern(regexp = ".*\\S.*", message = "Comment cannot be blank")
             String comment,
 
+            @Size(max = 50)
             String category
 
     ) {
