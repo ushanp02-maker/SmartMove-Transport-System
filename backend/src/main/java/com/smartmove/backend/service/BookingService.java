@@ -661,6 +661,13 @@ public class BookingService {
             RouteStop boarding,
             RouteStop destination
     ) {
+        // Validate the trip fare before calculating the booking amount.
+        BigDecimal tripFare = trip.getFare();
+
+        if (tripFare == null || tripFare.signum() <= 0) {
+            throw badRequest("Trip fare must be greater than zero");
+        }
+
         BigDecimal routeDistance =
                 trip.getRoute().getDistanceKm();
 
@@ -693,7 +700,7 @@ public class BookingService {
             );
         }
 
-        return trip.getFare()
+        return tripFare
                 .multiply(segmentDistance)
                 .divide(
                         routeDistance,
