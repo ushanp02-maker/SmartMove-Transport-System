@@ -1,4 +1,3 @@
-
 package com.smartmove.backend.repository;
 
 import com.smartmove.backend.entity.Driver;
@@ -22,6 +21,11 @@ public interface DriverRepository
     );
 
     Optional<Driver> findByLicenseNumber(
+            String licenseNumber
+    );
+
+    // Case-insensitive driver license lookup
+    Optional<Driver> findByLicenseNumberIgnoreCase(
             String licenseNumber
     );
 

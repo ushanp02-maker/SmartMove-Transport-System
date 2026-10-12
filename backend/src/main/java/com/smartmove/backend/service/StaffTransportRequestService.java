@@ -509,6 +509,14 @@ public class StaffTransportRequestService {
                         notFound("Trip not found")
                 );
 
+        // IMPROVEMENT 11: PREVENT SUSPENDED DRIVER ASSIGNMENT
+        if (trip.getDriver() == null
+                || "SUSPENDED".equalsIgnoreCase(trip.getDriver().getStatus())) {
+            throw conflict(
+                    "Suspended or missing driver cannot be assigned to a trip"
+            );
+        }
+
         if (!"SCHEDULED".equals(
                 normalize(trip.getStatus())
         )) {

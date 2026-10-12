@@ -65,6 +65,26 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     );
 
     // ==========================================
+    // DUPLICATE BOOKING PREVENTION
+    // ==========================================
+
+    @Query("""
+            SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
+            FROM Booking b
+            WHERE b.passenger.id = :passengerId
+              AND b.trip.id = :tripId
+              AND UPPER(b.status) IN ('PENDING', 'CONFIRMED')
+              AND b.boardingStop.stopOrder < :destinationOrder
+              AND b.destinationStop.stopOrder > :boardingOrder
+            """)
+    boolean existsOverlappingActiveBooking(
+            @Param("passengerId") Long passengerId,
+            @Param("tripId") Long tripId,
+            @Param("boardingOrder") Integer boardingOrder,
+            @Param("destinationOrder") Integer destinationOrder
+    );
+
+    // ==========================================
     // PASSENGER BOOKING HISTORY
     // ==========================================
 
