@@ -385,6 +385,12 @@ public class MaintenanceService {
             );
         }
 
+        if (maintenance.getScheduledDate() != null
+                && maintenance.getScheduledDate().isAfter(LocalDate.now())) {
+            throw badRequest(
+                    "Maintenance cannot start before its scheduled date"
+            );
+        }
         Vehicle vehicle = maintenance.getVehicle();
 
         ensureNoTripConflict(
