@@ -1122,4 +1122,68 @@ class BookingServiceTest {
         verifyNoInteractions(paymentRepository);
         verify(bookingRepository, never()).save(any(Booking.class));
     }
+
+    @Test
+    void confirmBookingShouldRejectIncorrectPaymentAmount() {
+        Booking booking = setupPaymentConfirmationBooking("PENDING");
+
+        com.smartmove.backend.entity.Payment payment =
+                mock(com.smartmove.backend.entity.Payment.class);
+
+        when(payment.getStatus()).thenReturn("COMPLETED");
+        when(payment.getAmount())
+                .thenReturn(new java.math.BigDecimal("300.00"));
+
+        when(paymentRepository.findByBookingIdOrderByCreatedAtDesc(1L))
+                .thenReturn(java.util.List.of(payment));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.confirmBooking(1L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("PENDING", booking.getStatus());
+
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void confirmBookingShouldRejectFailedPayment() {
+        Booking booking = setupPaymentConfirmationBooking("PENDING");
+
+        com.smartmove.backend.entity.Payment payment =
+                mock(com.smartmove.backend.entity.Payment.class);
+
+        when(payment.getStatus()).thenReturn("FAILED");
+
+        when(paymentRepository.findByBookingIdOrderByCreatedAtDesc(1L))
+                .thenReturn(java.util.List.of(payment));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.confirmBooking(1L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("PENDING", booking.getStatus());
+
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void confirmBookingShouldRejectCancelledBooking() {
+        Booking booking = setupPaymentConfirmationBooking("CANCELLED");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.confirmBooking(1L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("CANCELLED", booking.getStatus());
+
+        verifyNoInteractions(paymentRepository);
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
 }
