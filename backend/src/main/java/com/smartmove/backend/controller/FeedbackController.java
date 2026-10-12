@@ -497,9 +497,10 @@ public class FeedbackController {
     // ==========================================
 
     private Pageable createPageable(int page, int size) {
-        if (page < 0 || size < 1 || size > 100) {
+        if (page < 0) { throw badRequest("Page number cannot be negative"); }
+        if (size < 1 || size > 100) {
             throw badRequest(
-                    "Page must be nonnegative and size must be between 1 and 100"
+                    "Page size must be between 1 and 100"
             );
         }
 
