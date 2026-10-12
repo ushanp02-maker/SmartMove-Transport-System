@@ -451,11 +451,11 @@ public class FeedbackController {
             @Max(5)
             Integer comfortRating,
 
-            @Size(max = 150)
+            @Size(min = 3, max = 150)
             @Pattern(regexp = ".*\\S.*", message = "Title cannot be blank")
             String title,
 
-            @Size(max = 3000)
+            @Size(min = 10, max = 3000)
             @Pattern(regexp = ".*\\S.*", message = "Comment cannot be blank")
             String comment,
 
