@@ -902,4 +902,134 @@ class BookingServiceTest {
         verify(bookingRepository, never())
                 .save(any(Booking.class));
     }
+
+    @Test
+    void calculateBookingQuoteShouldCalculateCorrectSegmentFare() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.Vehicle vehicle =
+                mock(com.smartmove.backend.entity.Vehicle.class);
+
+        setupSeatAvailabilityTrip(
+                trip, route, boarding, destination, vehicle);
+
+        when(trip.getFare())
+                .thenReturn(new java.math.BigDecimal("500.00"));
+
+        when(route.getDistanceKm())
+                .thenReturn(new java.math.BigDecimal("100.00"));
+
+        when(boarding.getDistanceFromStartKm())
+                .thenReturn(new java.math.BigDecimal("20.00"));
+
+        when(destination.getDistanceFromStartKm())
+                .thenReturn(new java.math.BigDecimal("60.00"));
+
+        when(bookingRepository.findActiveBookingsForTrip(
+                eq(1L), anySet()))
+                .thenReturn(java.util.List.of());
+
+        var result = bookingService.calculateBookingQuote(
+                1L, 10L, 20L, 2
+        );
+
+        assertEquals(2, result.seatCount());
+
+        assertEquals(
+                0,
+                new java.math.BigDecimal("200.00")
+                        .compareTo(result.farePerSeat())
+        );
+
+        assertEquals(
+                0,
+                new java.math.BigDecimal("400.00")
+                        .compareTo(result.totalFare())
+        );
+
+        assertEquals(40, result.availableSeats());
+    }
+
+    private void setupSuccessfulBookingScenario() {
+        setupCreateBookingCapacityScenario(30, false);
+
+        Trip trip = tripRepository.findByIdForUpdate(1L).orElseThrow();
+
+        com.smartmove.backend.entity.Route route = trip.getRoute();
+
+        com.smartmove.backend.entity.RouteStop boarding =
+                stopRepository.findById(10L).orElseThrow();
+
+        com.smartmove.backend.entity.RouteStop destination =
+                stopRepository.findById(20L).orElseThrow();
+
+        when(trip.getFare())
+                .thenReturn(new java.math.BigDecimal("500.00"));
+
+        when(route.getDistanceKm())
+                .thenReturn(new java.math.BigDecimal("100.00"));
+
+        when(boarding.getDistanceFromStartKm())
+                .thenReturn(new java.math.BigDecimal("20.00"));
+
+        when(destination.getDistanceFromStartKm())
+                .thenReturn(new java.math.BigDecimal("60.00"));
+
+        when(bookingRepository.save(any(Booking.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void createBookingShouldSavePendingBookingWhenSeatsAvailable() {
+        setupSuccessfulBookingScenario();
+
+        var request = new BookingService.CreateBookingRequest(
+                5L, 1L, 10L, 20L, 2
+        );
+
+        var result = bookingService.createBooking(request);
+
+        org.mockito.ArgumentCaptor<Booking> captor =
+                org.mockito.ArgumentCaptor.forClass(Booking.class);
+
+        verify(bookingRepository).save(captor.capture());
+
+        Booking savedBooking = captor.getValue();
+
+        assertEquals("PENDING", savedBooking.getStatus());
+        assertEquals("PENDING", result.status());
+        assertEquals(2, savedBooking.getSeatCount());
+        assertNotNull(savedBooking.getBookingReference());
+    }
+
+    @Test
+    void createBookingShouldSaveCorrectTotalFare() {
+        setupSuccessfulBookingScenario();
+
+        var request = new BookingService.CreateBookingRequest(
+                5L, 1L, 10L, 20L, 2
+        );
+
+        bookingService.createBooking(request);
+
+        org.mockito.ArgumentCaptor<Booking> captor =
+                org.mockito.ArgumentCaptor.forClass(Booking.class);
+
+        verify(bookingRepository).save(captor.capture());
+
+        Booking savedBooking = captor.getValue();
+
+        assertEquals(
+                0,
+                new java.math.BigDecimal("400.00")
+                        .compareTo(savedBooking.getTotalFare())
+        );
+
+        assertEquals(2, savedBooking.getSeatCount());
+    }
 }
