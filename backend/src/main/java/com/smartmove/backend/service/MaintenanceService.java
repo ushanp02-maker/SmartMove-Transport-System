@@ -385,6 +385,12 @@ public class MaintenanceService {
             );
         }
 
+        if (maintenance.getScheduledDate() != null
+                && maintenance.getScheduledDate().isAfter(LocalDate.now())) {
+            throw badRequest(
+                    "Maintenance cannot start before its scheduled date"
+            );
+        }
         Vehicle vehicle = maintenance.getVehicle();
 
         ensureNoTripConflict(
@@ -869,10 +875,22 @@ public class MaintenanceService {
     }
 
     private void validateMoney(BigDecimal amount) {
-        if (amount != null && amount.signum() < 0) {
-            throw badRequest(
-                    "Cost cannot be negative"
-            );
+        if (amount == null) {
+            return;
+        }
+
+        if (amount.signum() < 0) {
+            throw badRequest("Cost cannot be negative");
+        }
+
+        BigDecimal normalized = amount.stripTrailingZeros();
+
+        if (normalized.scale() > 2) {
+            throw badRequest("Cost cannot have more than 2 decimal places");
+        }
+
+        if (normalized.precision() - normalized.scale() > 10) {
+            throw badRequest("Cost exceeds the maximum allowed amount");
         }
     }
 
