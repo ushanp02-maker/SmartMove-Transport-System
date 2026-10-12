@@ -174,4 +174,60 @@ class BookingServiceTest {
 
         verify(bookingRepository, never()).save(any());
     }
+
+    @Test
+    void cancelBookingShouldRejectNullId() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.cancelBooking(null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
+
+    @Test
+    void cancelBookingShouldRejectConfirmedBooking() {
+        com.smartmove.backend.entity.Booking booking =
+                mock(com.smartmove.backend.entity.Booking.class);
+
+        when(booking.getStatus()).thenReturn("CONFIRMED");
+
+        when(bookingRepository.findByIdForUpdate(5L))
+                .thenReturn(Optional.of(booking));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.cancelBooking(5L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(bookingRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelBookingShouldRejectAfterDeparture() {
+        com.smartmove.backend.entity.Booking booking =
+                mock(com.smartmove.backend.entity.Booking.class);
+
+        Trip trip = mock(Trip.class);
+
+        when(booking.getStatus()).thenReturn("PENDING");
+        when(booking.getTrip()).thenReturn(trip);
+
+        when(trip.getDepartureTime()).thenReturn(
+                java.time.LocalDateTime.now().minusHours(1)
+        );
+
+        when(bookingRepository.findByIdForUpdate(6L))
+                .thenReturn(Optional.of(booking));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.cancelBooking(6L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(bookingRepository, never()).save(any());
+    }
 }
