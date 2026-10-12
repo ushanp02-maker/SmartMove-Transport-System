@@ -1032,4 +1032,94 @@ class BookingServiceTest {
 
         assertEquals(2, savedBooking.getSeatCount());
     }
+
+    private Booking setupPaymentConfirmationBooking(String status) {
+        Booking booking = new Booking();
+
+        booking.setStatus(status);
+        booking.setTotalFare(new java.math.BigDecimal("400.00"));
+        booking.setBookingReference("SM-TEST-001");
+        booking.setSeatCount(2);
+
+        com.smartmove.backend.entity.Passenger passenger =
+                mock(com.smartmove.backend.entity.Passenger.class);
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+
+        booking.setPassenger(passenger);
+        booking.setTrip(trip);
+        booking.setBoardingStop(boarding);
+        booking.setDestinationStop(destination);
+
+        when(passenger.getId()).thenReturn(5L);
+        when(trip.getId()).thenReturn(1L);
+        when(trip.getRoute()).thenReturn(route);
+        when(boarding.getId()).thenReturn(10L);
+        when(destination.getId()).thenReturn(20L);
+
+        when(bookingRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(booking));
+
+        return booking;
+    }
+
+    @Test
+    void confirmBookingShouldConfirmWhenMatchingPaymentCompleted() {
+        Booking booking = setupPaymentConfirmationBooking("PENDING");
+
+        com.smartmove.backend.entity.Payment payment =
+                mock(com.smartmove.backend.entity.Payment.class);
+
+        when(payment.getStatus()).thenReturn("COMPLETED");
+        when(payment.getAmount())
+                .thenReturn(new java.math.BigDecimal("400.00"));
+
+        when(paymentRepository.findByBookingIdOrderByCreatedAtDesc(1L))
+                .thenReturn(java.util.List.of(payment));
+
+        when(bookingRepository.save(any(Booking.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = bookingService.confirmBooking(1L);
+
+        assertEquals("CONFIRMED", booking.getStatus());
+        assertEquals("CONFIRMED", result.status());
+
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void confirmBookingShouldRejectWithoutMatchingCompletedPayment() {
+        Booking booking = setupPaymentConfirmationBooking("PENDING");
+
+        when(paymentRepository.findByBookingIdOrderByCreatedAtDesc(1L))
+                .thenReturn(java.util.List.of());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.confirmBooking(1L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("PENDING", booking.getStatus());
+
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void confirmBookingShouldReturnAlreadyConfirmedBooking() {
+        Booking booking = setupPaymentConfirmationBooking("CONFIRMED");
+
+        var result = bookingService.confirmBooking(1L);
+
+        assertEquals("CONFIRMED", result.status());
+
+        verifyNoInteractions(paymentRepository);
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
 }
