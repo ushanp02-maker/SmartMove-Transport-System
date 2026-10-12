@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.data.domain.Page;
@@ -450,10 +451,12 @@ public class FeedbackController {
             @Max(5)
             Integer comfortRating,
 
-            @Size(max = 150)
+            @Size(min = 3, max = 150)
+            @Pattern(regexp = ".*\\S.*", message = "Title cannot be blank")
             String title,
 
-            @Size(max = 3000)
+            @Size(min = 10, max = 3000)
+            @Pattern(regexp = ".*\\S.*", message = "Comment cannot be blank")
             String comment,
 
             String category
@@ -494,9 +497,10 @@ public class FeedbackController {
     // ==========================================
 
     private Pageable createPageable(int page, int size) {
-        if (page < 0 || size < 1 || size > 100) {
+        if (page < 0) { throw badRequest("Page number cannot be negative"); }
+        if (size < 1 || size > 100) {
             throw badRequest(
-                    "Page must be nonnegative and size must be between 1 and 100"
+                    "Page size must be between 1 and 100"
             );
         }
 
