@@ -920,6 +920,10 @@ public class StaffTransportRequestService {
             );
         }
 
+        if (requestedDate.isEqual(LocalDate.now()) && pickupTime.isBefore(LocalTime.now())) {
+            throw badRequest("Pickup time cannot be in the past");
+        }
+
         if (passengerCount == null
                 || passengerCount < 1
                 || passengerCount > 1000) {
