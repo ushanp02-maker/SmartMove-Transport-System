@@ -1,6 +1,7 @@
 package com.smartmove.backend.service;
 
 import com.smartmove.backend.entity.Trip;
+import com.smartmove.backend.entity.Booking;
 import com.smartmove.backend.repository.BookingRepository;
 import com.smartmove.backend.repository.PassengerRepository;
 import com.smartmove.backend.repository.PaymentRepository;
@@ -550,5 +551,142 @@ class BookingServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verifyNoInteractions(bookingRepository);
+    }
+
+    private void setupSeatAvailabilityTrip(
+            Trip trip,
+            com.smartmove.backend.entity.Route route,
+            com.smartmove.backend.entity.RouteStop boarding,
+            com.smartmove.backend.entity.RouteStop destination,
+            com.smartmove.backend.entity.Vehicle vehicle) {
+
+        when(tripRepository.findById(1L)).thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+        when(trip.getDepartureTime())
+                .thenReturn(java.time.LocalDateTime.now().plusDays(1));
+        when(trip.getRoute()).thenReturn(route);
+        when(route.getStatus()).thenReturn("ACTIVE");
+        when(route.getId()).thenReturn(100L);
+
+        when(stopRepository.findById(10L)).thenReturn(Optional.of(boarding));
+        when(stopRepository.findById(20L)).thenReturn(Optional.of(destination));
+
+        when(boarding.getRoute()).thenReturn(route);
+        when(destination.getRoute()).thenReturn(route);
+        when(boarding.getStopOrder()).thenReturn(1);
+        when(destination.getStopOrder()).thenReturn(4);
+
+        when(trip.getVehicle()).thenReturn(vehicle);
+        when(vehicle.getSeatingCapacity()).thenReturn(40);
+    }
+
+    @Test
+    void getSeatAvailabilityShouldReturnFullCapacityWithoutBookings() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.Vehicle vehicle =
+                mock(com.smartmove.backend.entity.Vehicle.class);
+
+        setupSeatAvailabilityTrip(
+                trip, route, boarding, destination, vehicle);
+
+        when(bookingRepository.findActiveBookingsForTrip(
+                eq(1L), anySet()))
+                .thenReturn(java.util.List.of());
+
+        var result = bookingService.getSeatAvailability(1L, 10L, 20L);
+
+        assertEquals(40, result.totalCapacity());
+        assertEquals(0, result.occupiedSeats());
+        assertEquals(40, result.availableSeats());
+    }
+
+    @Test
+    void getSeatAvailabilityShouldCountOverlappingBookings() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.Vehicle vehicle =
+                mock(com.smartmove.backend.entity.Vehicle.class);
+
+        setupSeatAvailabilityTrip(
+                trip, route, boarding, destination, vehicle);
+
+        com.smartmove.backend.entity.RouteStop stop2 =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop stop3 =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+
+        when(stop2.getStopOrder()).thenReturn(2);
+        when(stop3.getStopOrder()).thenReturn(3);
+
+        Booking bookingA = mock(Booking.class);
+        when(bookingA.getBoardingStop()).thenReturn(boarding);
+        when(bookingA.getDestinationStop()).thenReturn(stop3);
+        when(bookingA.getSeatCount()).thenReturn(10);
+
+        Booking bookingB = mock(Booking.class);
+        when(bookingB.getBoardingStop()).thenReturn(stop2);
+        when(bookingB.getDestinationStop()).thenReturn(destination);
+        when(bookingB.getSeatCount()).thenReturn(15);
+
+        when(bookingRepository.findActiveBookingsForTrip(
+                eq(1L), anySet()))
+                .thenReturn(java.util.List.of(bookingA, bookingB));
+
+        var result = bookingService.getSeatAvailability(1L, 10L, 20L);
+
+        assertEquals(40, result.totalCapacity());
+        assertEquals(25, result.occupiedSeats());
+        assertEquals(15, result.availableSeats());
+    }
+
+    @Test
+    void getSeatAvailabilityShouldReuseSeatsAcrossNonOverlappingBookings() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.Vehicle vehicle =
+                mock(com.smartmove.backend.entity.Vehicle.class);
+
+        setupSeatAvailabilityTrip(
+                trip, route, boarding, destination, vehicle);
+
+        com.smartmove.backend.entity.RouteStop stop2 =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        when(stop2.getStopOrder()).thenReturn(2);
+
+        Booking bookingA = mock(Booking.class);
+        when(bookingA.getBoardingStop()).thenReturn(boarding);
+        when(bookingA.getDestinationStop()).thenReturn(stop2);
+        when(bookingA.getSeatCount()).thenReturn(10);
+
+        Booking bookingB = mock(Booking.class);
+        when(bookingB.getBoardingStop()).thenReturn(stop2);
+        when(bookingB.getDestinationStop()).thenReturn(destination);
+        when(bookingB.getSeatCount()).thenReturn(15);
+
+        when(bookingRepository.findActiveBookingsForTrip(
+                eq(1L), anySet()))
+                .thenReturn(java.util.List.of(bookingA, bookingB));
+
+        var result = bookingService.getSeatAvailability(1L, 10L, 20L);
+
+        assertEquals(40, result.totalCapacity());
+        assertEquals(15, result.occupiedSeats());
+        assertEquals(25, result.availableSeats());
     }
 }
