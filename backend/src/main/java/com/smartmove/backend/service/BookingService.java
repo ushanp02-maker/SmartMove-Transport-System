@@ -176,6 +176,20 @@ public class BookingService {
             Long destinationStopId
     ) {
         Trip trip = findTrip(tripId);
+        // Check whether the trip is open for booking.
+        if (!"SCHEDULED".equalsIgnoreCase(trip.getStatus())) {
+         throw conflict("This trip is not open for booking");
+        }
+
+        if (trip.getDepartureTime() == null
+        || !trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+         throw conflict("Booking is closed for this trip");
+        }
+
+        if (trip.getRoute() == null
+        || !"ACTIVE".equalsIgnoreCase(trip.getRoute().getStatus())) {
+        throw conflict("The route is not currently active");
+        }
 
         RouteStop boarding = findStopOnTrip(
                 trip, boardingStopId
@@ -372,6 +386,21 @@ public class BookingService {
         );
 
         validateStopOrder(boarding, destination);
+
+        // Prevent overlapping active bookings for the same passenger.
+        boolean duplicateBooking =
+                bookingRepository.existsOverlappingActiveBooking(
+                        passenger.getId(),
+                        trip.getId(),
+                        boarding.getStopOrder(),
+                        destination.getStopOrder()
+                );
+
+        if (duplicateBooking) {
+            throw conflict(
+                    "Passenger already has an active booking for this journey"
+            );
+        }
 
         SeatAvailability availability =
                 getSeatAvailability(
@@ -661,6 +690,13 @@ public class BookingService {
             RouteStop boarding,
             RouteStop destination
     ) {
+        // Validate the trip fare before calculating the booking amount.
+        BigDecimal tripFare = trip.getFare();
+
+        if (tripFare == null || tripFare.signum() <= 0) {
+            throw badRequest("Trip fare must be greater than zero");
+        }
+
         BigDecimal routeDistance =
                 trip.getRoute().getDistanceKm();
 
@@ -693,7 +729,7 @@ public class BookingService {
             );
         }
 
-        return trip.getFare()
+        return tripFare
                 .multiply(segmentDistance)
                 .divide(
                         routeDistance,
