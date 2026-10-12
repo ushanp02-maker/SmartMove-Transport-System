@@ -777,4 +777,129 @@ class BookingServiceTest {
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verifyNoInteractions(bookingRepository);
     }
+
+    private void setupCreateBookingCapacityScenario(
+            int occupiedSeats,
+            boolean duplicateBooking) {
+
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.Vehicle vehicle =
+                mock(com.smartmove.backend.entity.Vehicle.class);
+        com.smartmove.backend.entity.Passenger passenger =
+                mock(com.smartmove.backend.entity.Passenger.class);
+
+        when(tripRepository.findByIdForUpdate(1L))
+                .thenReturn(Optional.of(trip));
+
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+        when(trip.getDepartureTime())
+                .thenReturn(java.time.LocalDateTime.now().plusDays(1));
+        when(trip.getRoute()).thenReturn(route);
+        when(route.getStatus()).thenReturn("ACTIVE");
+
+        when(passengerRepository.findById(5L))
+                .thenReturn(Optional.of(passenger));
+
+        when(stopRepository.findById(10L))
+                .thenReturn(Optional.of(boarding));
+        when(stopRepository.findById(20L))
+                .thenReturn(Optional.of(destination));
+
+        when(route.getId()).thenReturn(100L);
+        when(boarding.getRoute()).thenReturn(route);
+        when(destination.getRoute()).thenReturn(route);
+
+        when(boarding.getStopOrder()).thenReturn(1);
+        when(destination.getStopOrder()).thenReturn(4);
+
+        when(passenger.getId()).thenReturn(5L);
+        when(trip.getId()).thenReturn(1L);
+        when(boarding.getId()).thenReturn(10L);
+        when(destination.getId()).thenReturn(20L);
+
+        when(bookingRepository.existsOverlappingActiveBooking(
+                5L, 1L, 1, 4))
+                .thenReturn(duplicateBooking);
+
+        if (!duplicateBooking) {
+            when(tripRepository.findById(1L))
+                    .thenReturn(Optional.of(trip));
+
+            when(trip.getVehicle()).thenReturn(vehicle);
+            when(vehicle.getSeatingCapacity()).thenReturn(40);
+
+            Booking existingBooking = mock(Booking.class);
+            when(existingBooking.getBoardingStop()).thenReturn(boarding);
+            when(existingBooking.getDestinationStop()).thenReturn(destination);
+            when(existingBooking.getSeatCount()).thenReturn(occupiedSeats);
+
+            when(bookingRepository.findActiveBookingsForTrip(
+                    eq(1L), anySet()))
+                    .thenReturn(java.util.List.of(existingBooking));
+        }
+    }
+
+    @Test
+    void createBookingShouldRejectWhenRequestedSeatsExceedAvailability() {
+        setupCreateBookingCapacityScenario(38, false);
+
+        var request = new BookingService.CreateBookingRequest(
+                5L, 1L, 10L, 20L, 3
+        );
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.createBooking(request)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("Not enough seats"));
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void createBookingShouldRejectWhenNoSeatsAvailable() {
+        setupCreateBookingCapacityScenario(40, false);
+
+        var request = new BookingService.CreateBookingRequest(
+                5L, 1L, 10L, 20L, 1
+        );
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.createBooking(request)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(bookingRepository, never()).save(any(Booking.class));
+    }
+
+    @Test
+    void createBookingShouldRejectDuplicateBeforeCheckingCapacity() {
+        setupCreateBookingCapacityScenario(0, true);
+
+        var request = new BookingService.CreateBookingRequest(
+                5L, 1L, 10L, 20L, 2
+        );
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.createBooking(request)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertTrue(exception.getReason().contains("active booking"));
+
+        verify(bookingRepository, never())
+                .findActiveBookingsForTrip(anyLong(), anySet());
+
+        verify(bookingRepository, never())
+                .save(any(Booking.class));
+    }
 }
