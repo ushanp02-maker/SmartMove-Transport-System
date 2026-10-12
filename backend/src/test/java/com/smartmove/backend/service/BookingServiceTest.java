@@ -230,4 +230,54 @@ class BookingServiceTest {
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         verify(bookingRepository, never()).save(any());
     }
+
+    @Test
+    void getBookingByIdShouldRejectNullId() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getBookingById(null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
+
+    @Test
+    void getBookingByIdShouldReturnNotFound() {
+        when(bookingRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getBookingById(999L)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verify(bookingRepository).findById(999L);
+    }
+
+    @Test
+    void getBookingByReferenceShouldRejectBlankReference() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getBookingByReference("   ")
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
+
+    @Test
+    void getBookingByReferenceShouldReturnNotFound() {
+        when(bookingRepository.findByBookingReference("BK-UNKNOWN"))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getBookingByReference("BK-UNKNOWN")
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verify(bookingRepository).findByBookingReference("BK-UNKNOWN");
+    }
 }
