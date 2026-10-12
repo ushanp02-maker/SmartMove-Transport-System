@@ -344,4 +344,50 @@ class BookingServiceTest {
                         anyString()
                 );
     }
+
+    @Test
+    void getTripBookingsShouldRejectNullTripId() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getTripBookings(null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(tripRepository, bookingRepository);
+    }
+
+    @Test
+    void getTripBookingsShouldReturnNotFoundForUnknownTrip() {
+        when(tripRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getTripBookings(999L)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+
+        verify(tripRepository).findById(999L);
+        verify(bookingRepository, never())
+                .findByTripIdOrderByBookedAtDesc(anyLong());
+    }
+
+    @Test
+    void getTripBookingsShouldReturnEmptyListWhenNoBookingsExist() {
+        Trip trip = mock(Trip.class);
+
+        when(tripRepository.findById(1L))
+                .thenReturn(Optional.of(trip));
+
+        when(bookingRepository.findByTripIdOrderByBookedAtDesc(1L))
+                .thenReturn(java.util.List.of());
+
+        var result = bookingService.getTripBookings(1L);
+
+        assertTrue(result.isEmpty());
+
+        verify(bookingRepository)
+                .findByTripIdOrderByBookedAtDesc(1L);
+    }
 }
