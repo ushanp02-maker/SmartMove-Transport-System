@@ -280,4 +280,68 @@ class BookingServiceTest {
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verify(bookingRepository).findByBookingReference("BK-UNKNOWN");
     }
+
+    @Test
+    void getPassengerBookingsShouldRejectNullPassengerId() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getPassengerBookings(null)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(passengerRepository, bookingRepository);
+    }
+
+    @Test
+    void getPassengerBookingsShouldReturnNotFoundForUnknownPassenger() {
+        when(passengerRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getPassengerBookings(999L)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verify(bookingRepository, never())
+                .findByPassengerIdOrderByBookedAtDesc(anyLong());
+    }
+
+    @Test
+    void getPassengerBookingsShouldReturnEmptyListWhenNoBookingsExist() {
+        com.smartmove.backend.entity.Passenger passenger = mock(com.smartmove.backend.entity.Passenger.class);
+
+        when(passengerRepository.findById(1L))
+                .thenReturn(Optional.of(passenger));
+
+        when(bookingRepository.findByPassengerIdOrderByBookedAtDesc(1L))
+                .thenReturn(java.util.List.of());
+
+        var result = bookingService.getPassengerBookings(1L);
+
+        assertTrue(result.isEmpty());
+        verify(bookingRepository)
+                .findByPassengerIdOrderByBookedAtDesc(1L);
+    }
+
+    @Test
+    void getPassengerBookingsByStatusShouldRejectBlankStatus() {
+        com.smartmove.backend.entity.Passenger passenger = mock(com.smartmove.backend.entity.Passenger.class);
+
+        when(passengerRepository.findById(1L))
+                .thenReturn(Optional.of(passenger));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getPassengerBookingsByStatus(1L, "   ")
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+
+        verify(bookingRepository, never())
+                .findByPassengerIdAndStatusIgnoreCaseOrderByBookedAtDesc(
+                        anyLong(),
+                        anyString()
+                );
+    }
 }
