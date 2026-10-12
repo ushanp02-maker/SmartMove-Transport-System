@@ -486,7 +486,7 @@ public class FeedbackController {
             Long adminUserId,
 
             @NotBlank(message = "Response is required")
-            @Size(max = 2000)
+            @Size(min = 5, max = 2000)
             String response
 
     ) {
