@@ -281,6 +281,9 @@ public class BookingService {
                         boardingStopId,
                         destinationStopId
                 );
+        if (seatCount > availability.availableSeats()) {
+    throw conflict("Not enough seats are available for this booking");
+}
 
         BigDecimal farePerSeat = calculateSegmentFare(
                 trip,
