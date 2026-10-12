@@ -435,4 +435,50 @@ class BookingServiceTest {
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
         verifyNoInteractions(bookingRepository);
     }
+
+    @Test
+    void getSeatAvailabilityShouldRejectInactiveRoute() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+
+        when(tripRepository.findById(1L))
+                .thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+        when(trip.getDepartureTime())
+                .thenReturn(java.time.LocalDateTime.now().plusDays(1));
+        when(trip.getRoute()).thenReturn(route);
+        when(route.getStatus()).thenReturn("INACTIVE");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(1L, 10L, 20L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verifyNoInteractions(stopRepository, bookingRepository);
+    }
+
+    @Test
+    void getSeatAvailabilityShouldRejectNullBoardingStopId() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+
+        when(tripRepository.findById(1L))
+                .thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+        when(trip.getDepartureTime())
+                .thenReturn(java.time.LocalDateTime.now().plusDays(1));
+        when(trip.getRoute()).thenReturn(route);
+        when(route.getStatus()).thenReturn("ACTIVE");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(1L, null, 20L)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(stopRepository, bookingRepository);
+    }
 }
