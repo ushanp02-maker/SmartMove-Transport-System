@@ -176,6 +176,20 @@ public class BookingService {
             Long destinationStopId
     ) {
         Trip trip = findTrip(tripId);
+        // Check whether the trip is open for booking.
+        if (!"SCHEDULED".equalsIgnoreCase(trip.getStatus())) {
+         throw conflict("This trip is not open for booking");
+        }
+
+        if (trip.getDepartureTime() == null
+        || !trip.getDepartureTime().isAfter(LocalDateTime.now())) {
+         throw conflict("Booking is closed for this trip");
+        }
+
+        if (trip.getRoute() == null
+        || !"ACTIVE".equalsIgnoreCase(trip.getRoute().getStatus())) {
+        throw conflict("The route is not currently active");
+        }
 
         RouteStop boarding = findStopOnTrip(
                 trip, boardingStopId
