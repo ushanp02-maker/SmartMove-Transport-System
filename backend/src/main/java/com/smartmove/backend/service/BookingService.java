@@ -387,6 +387,21 @@ public class BookingService {
 
         validateStopOrder(boarding, destination);
 
+        // Prevent overlapping active bookings for the same passenger.
+        boolean duplicateBooking =
+                bookingRepository.existsOverlappingActiveBooking(
+                        passenger.getId(),
+                        trip.getId(),
+                        boarding.getStopOrder(),
+                        destination.getStopOrder()
+                );
+
+        if (duplicateBooking) {
+            throw conflict(
+                    "Passenger already has an active booking for this journey"
+            );
+        }
+
         SeatAvailability availability =
                 getSeatAvailability(
                         trip.getId(),
