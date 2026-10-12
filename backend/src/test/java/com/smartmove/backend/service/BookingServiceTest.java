@@ -481,4 +481,74 @@ class BookingServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verifyNoInteractions(stopRepository, bookingRepository);
     }
+
+    @Test
+    void getSeatAvailabilityShouldRejectReverseStopOrder() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+
+        when(tripRepository.findById(1L)).thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+        when(trip.getDepartureTime())
+                .thenReturn(java.time.LocalDateTime.now().plusDays(1));
+        when(trip.getRoute()).thenReturn(route);
+        when(route.getStatus()).thenReturn("ACTIVE");
+        when(route.getId()).thenReturn(100L);
+
+        when(stopRepository.findById(10L)).thenReturn(Optional.of(boarding));
+        when(stopRepository.findById(20L)).thenReturn(Optional.of(destination));
+
+        when(boarding.getRoute()).thenReturn(route);
+        when(destination.getRoute()).thenReturn(route);
+        when(boarding.getStopOrder()).thenReturn(5);
+        when(destination.getStopOrder()).thenReturn(3);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(1L, 10L, 20L)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
+
+    @Test
+    void getSeatAvailabilityShouldRejectSameStopOrder() {
+        Trip trip = mock(Trip.class);
+        com.smartmove.backend.entity.Route route =
+                mock(com.smartmove.backend.entity.Route.class);
+        com.smartmove.backend.entity.RouteStop boarding =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+        com.smartmove.backend.entity.RouteStop destination =
+                mock(com.smartmove.backend.entity.RouteStop.class);
+
+        when(tripRepository.findById(1L)).thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+        when(trip.getDepartureTime())
+                .thenReturn(java.time.LocalDateTime.now().plusDays(1));
+        when(trip.getRoute()).thenReturn(route);
+        when(route.getStatus()).thenReturn("ACTIVE");
+        when(route.getId()).thenReturn(100L);
+
+        when(stopRepository.findById(10L)).thenReturn(Optional.of(boarding));
+        when(stopRepository.findById(20L)).thenReturn(Optional.of(destination));
+
+        when(boarding.getRoute()).thenReturn(route);
+        when(destination.getRoute()).thenReturn(route);
+        when(boarding.getStopOrder()).thenReturn(3);
+        when(destination.getStopOrder()).thenReturn(3);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(1L, 10L, 20L)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
 }
