@@ -405,13 +405,20 @@ public class StaffTransportRequestService {
 
         requireStatus(entity, PENDING);
 
-        if (review != null
-                && review.approvedFare() != null
-                && review.approvedFare()
-                .compareTo(BigDecimal.ZERO) < 0) {
-            throw badRequest(
-                    "Approved fare cannot be negative"
-            );
+        if (review != null && review.approvedFare() != null) {
+            BigDecimal fare = review.approvedFare();
+
+            if (fare.compareTo(BigDecimal.ZERO) < 0) {
+                throw badRequest("Approved fare cannot be negative");
+            }
+
+            if (fare.stripTrailingZeros().scale() > 2) {
+                throw badRequest("Approved fare cannot exceed 2 decimal places");
+            }
+
+            if (fare.compareTo(new BigDecimal("9999999999.99")) > 0) {
+                throw badRequest("Approved fare exceeds the maximum allowed amount");
+            }
         }
 
         UserAccount reviewer = getCurrentReviewer();
