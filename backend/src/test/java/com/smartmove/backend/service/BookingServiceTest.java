@@ -390,4 +390,49 @@ class BookingServiceTest {
         verify(bookingRepository)
                 .findByTripIdOrderByBookedAtDesc(1L);
     }
+
+    @Test
+    void getSeatAvailabilityShouldRejectNullTripId() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(null, 1L, 2L)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verifyNoInteractions(tripRepository, bookingRepository);
+    }
+
+    @Test
+    void getSeatAvailabilityShouldRejectUnscheduledTrip() {
+        Trip trip = mock(Trip.class);
+
+        when(tripRepository.findById(1L))
+                .thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("CANCELLED");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(1L, 1L, 2L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
+
+    @Test
+    void getSeatAvailabilityShouldRejectTripWithoutDepartureTime() {
+        Trip trip = mock(Trip.class);
+
+        when(tripRepository.findById(1L))
+                .thenReturn(Optional.of(trip));
+        when(trip.getStatus()).thenReturn("SCHEDULED");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.getSeatAvailability(1L, 1L, 2L)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verifyNoInteractions(bookingRepository);
+    }
 }
