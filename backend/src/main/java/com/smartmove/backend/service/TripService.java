@@ -721,10 +721,15 @@ public class TripService {
     }
 
     private void validateFare(BigDecimal fare) {
-        if (fare != null && fare.signum() < 0) {
+        if (fare == null) { return; }
+        if (fare.signum() < 0) {
             throw badRequest(
                     "Fare cannot be negative"
             );
+        }
+        BigDecimal normalizedFare = fare.stripTrailingZeros();
+        if (normalizedFare.scale() > 2 || normalizedFare.precision() - normalizedFare.scale() > 10) {
+            throw badRequest("Fare must have at most 10 integer digits and 2 decimal places");
         }
     }
 
