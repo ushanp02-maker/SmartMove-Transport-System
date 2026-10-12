@@ -1,0 +1,64 @@
+[{
+  "_id": {
+    "$oid": "6aca9bd4773850172ab70f61"
+  },
+  "vehicleId": {
+    "$numberLong": "21"
+  },
+  "documentType": "OTHER",
+  "title": "images (3).jpg",
+  "status": "ACTIVE",
+  "verificationStatus": "PENDING",
+  "originalFileName": "images (3).jpg",
+  "storedFileName": "6aca9bd4773850172ab70f5f",
+  "fileUrl": "/api/vehicle-documents/files/6aca9bd4773850172ab70f5f",
+  "contentType": "image/jpeg",
+  "fileSizeBytes": {
+    "$numberLong": "37237"
+  },
+  "uploadedByUserId": {
+    "$numberLong": "3"
+  },
+  "expiryReminderEnabled": true,
+  "reminderDaysBeforeExpiry": 30,
+  "tags": [],
+  "createdAt": {
+    "$date": "2026-10-10T20:11:00.825Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-10T20:11:00.825Z"
+  },
+  "_class": "com.smartmove.backend.document.VehicleDocument"
+},
+{
+  "_id": {
+    "$oid": "6acb94372b0c443d7c1aa470"
+  },
+  "vehicleId": {
+    "$numberLong": "21"
+  },
+  "documentType": "OTHER",
+  "title": "images (3).jpg",
+  "status": "ACTIVE",
+  "verificationStatus": "PENDING",
+  "originalFileName": "images (3).jpg",
+  "storedFileName": "6acb94372b0c443d7c1aa46e",
+  "fileUrl": "/api/vehicle-documents/files/6acb94372b0c443d7c1aa46e",
+  "contentType": "image/jpeg",
+  "fileSizeBytes": {
+    "$numberLong": "37237"
+  },
+  "uploadedByUserId": {
+    "$numberLong": "3"
+  },
+  "expiryReminderEnabled": true,
+  "reminderDaysBeforeExpiry": 30,
+  "tags": [],
+  "createdAt": {
+    "$date": "2026-10-11T13:50:47.773Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-11T13:50:47.773Z"
+  },
+  "_class": "com.smartmove.backend.document.VehicleDocument"
+}]

@@ -1,0 +1,187 @@
+[{
+  "_id": {
+    "$oid": "6aca9caa773850172ab70f63"
+  },
+  "recipientAccountId": {
+    "$numberLong": "1"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "ANNOUNCEMENT",
+  "link": "/announcements",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:34.205Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6aca9caa773850172ab70f64"
+  },
+  "recipientAccountId": {
+    "$numberLong": "2"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "ANNOUNCEMENT",
+  "link": "/announcements",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:34.205Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6aca9caa773850172ab70f65"
+  },
+  "recipientAccountId": {
+    "$numberLong": "4"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "ANNOUNCEMENT",
+  "link": "/announcements",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:34.205Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6aca9caa773850172ab70f66"
+  },
+  "recipientAccountId": {
+    "$numberLong": "5"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "ANNOUNCEMENT",
+  "link": "/announcements",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:34.205Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6aca9caa773850172ab70f67"
+  },
+  "recipientAccountId": {
+    "$numberLong": "6"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "ANNOUNCEMENT",
+  "link": "/announcements",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:34.205Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6aca9caa773850172ab70f68"
+  },
+  "recipientAccountId": {
+    "$numberLong": "3"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "ANNOUNCEMENT",
+  "link": "/announcements",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:34.205Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6acb93322b0c443d7c1aa469"
+  },
+  "recipientAccountId": {
+    "$numberLong": "3"
+  },
+  "title": "New custom trip request",
+  "message": "A passenger submitted custom trip request #22.",
+  "category": "CUSTOM_TRIP",
+  "link": "/admin/custom-trip-requests",
+  "read": true,
+  "createdAt": {
+    "$date": "2026-10-11T13:46:26.678Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6acb93662b0c443d7c1aa46a"
+  },
+  "recipientAccountId": {
+    "$numberLong": "1"
+  },
+  "title": "Custom trip approved",
+  "message": "Your custom trip request #22 is approved.",
+  "category": "CUSTOM_TRIP",
+  "link": "/passenger/custom-trips",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-11T13:47:18.957Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6acb93722b0c443d7c1aa46b"
+  },
+  "recipientAccountId": {
+    "$numberLong": "6"
+  },
+  "title": "Trip assigned",
+  "message": "You have been assigned trip #25.",
+  "category": "TRIP_ASSIGNMENT",
+  "link": "/driver/trips",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-11T13:47:30.296Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6acb93722b0c443d7c1aa46c"
+  },
+  "recipientAccountId": {
+    "$numberLong": "1"
+  },
+  "title": "Custom trip assigned",
+  "message": "Your custom trip request #22 is assigned.",
+  "category": "CUSTOM_TRIP",
+  "link": "/passenger/custom-trips",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-11T13:47:30.306Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+},
+{
+  "_id": {
+    "$oid": "6acb93722b0c443d7c1aa46d"
+  },
+  "recipientAccountId": {
+    "$numberLong": "6"
+  },
+  "title": "Custom trip assigned",
+  "message": "You have been assigned trip #25.",
+  "category": "TRIP_ASSIGNMENT",
+  "link": "/driver/trips",
+  "read": false,
+  "createdAt": {
+    "$date": "2026-10-11T13:47:30.310Z"
+  },
+  "_class": "com.smartmove.backend.model.PortalNotification"
+}]

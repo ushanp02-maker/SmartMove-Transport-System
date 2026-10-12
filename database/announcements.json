@@ -1,0 +1,122 @@
+[{
+  "_id": {
+    "$oid": "6aca93db3ad2adf9f0266768"
+  },
+  "title": "delay",
+  "message": "delay occured due to  bad weather",
+  "category": "DELAY",
+  "priority": "NORMAL",
+  "status": "DRAFT",
+  "targetAudience": "DRIVER",
+  "affectedRouteIds": [],
+  "affectedTripIds": [],
+  "affectedCities": [],
+  "createdByUserId": {
+    "$numberLong": "1"
+  },
+  "pinned": false,
+  "important": false,
+  "createdAt": {
+    "$date": "2026-10-10T19:36:58.915Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-10T19:36:58.915Z"
+  },
+  "_class": "com.smartmove.backend.document.Announcement"
+},
+{
+  "_id": {
+    "$oid": "6aca9579dabca2762b140637"
+  },
+  "title": "delay",
+  "message": "delay due to weather",
+  "category": "GENERAL",
+  "priority": "NORMAL",
+  "status": "PUBLISHED",
+  "targetAudience": "DRIVER",
+  "affectedRouteIds": [],
+  "affectedTripIds": [],
+  "affectedCities": [],
+  "createdByUserId": {
+    "$numberLong": "3"
+  },
+  "updatedByUserId": {
+    "$numberLong": "3"
+  },
+  "publishAt": {
+    "$date": "2026-10-10T19:43:59.070Z"
+  },
+  "publishedAt": {
+    "$date": "2026-10-10T19:43:59.070Z"
+  },
+  "pinned": false,
+  "important": false,
+  "createdAt": {
+    "$date": "2026-10-10T19:43:53.623Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-10T19:43:59.070Z"
+  },
+  "_class": "com.smartmove.backend.document.Announcement"
+},
+{
+  "_id": {
+    "$oid": "6aca9ca2773850172ab70f62"
+  },
+  "title": "delay",
+  "message": "test announcement",
+  "category": "GENERAL",
+  "priority": "NORMAL",
+  "status": "PUBLISHED",
+  "targetAudience": "ALL",
+  "affectedRouteIds": [],
+  "affectedTripIds": [],
+  "affectedCities": [],
+  "createdByUserId": {
+    "$numberLong": "3"
+  },
+  "updatedByUserId": {
+    "$numberLong": "3"
+  },
+  "publishAt": {
+    "$date": "2026-10-10T20:14:33.372Z"
+  },
+  "publishedAt": {
+    "$date": "2026-10-10T20:14:33.372Z"
+  },
+  "pinned": false,
+  "important": false,
+  "createdAt": {
+    "$date": "2026-10-10T20:14:26.577Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-10T20:14:33.372Z"
+  },
+  "_class": "com.smartmove.backend.document.Announcement"
+},
+{
+  "_id": {
+    "$oid": "6acb90232b0c443d7c1aa466"
+  },
+  "title": "test",
+  "message": "testing",
+  "category": "GENERAL",
+  "priority": "NORMAL",
+  "status": "DRAFT",
+  "targetAudience": "ALL",
+  "affectedRouteIds": [],
+  "affectedTripIds": [],
+  "affectedCities": [],
+  "createdByUserId": {
+    "$numberLong": "3"
+  },
+  "pinned": false,
+  "important": false,
+  "createdAt": {
+    "$date": "2026-10-11T13:33:23.121Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-11T13:33:23.121Z"
+  },
+  "_class": "com.smartmove.backend.document.Announcement"
+}]
