@@ -269,7 +269,7 @@ public class FeedbackController {
     @GetMapping("/{feedbackId}")
     public ResponseEntity<FeedbackProfile>
     getFeedbackDetails(
-            @PathVariable String feedbackId
+            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId
     ) {
         return ResponseEntity.ok(
                 feedbackService.getFeedbackDetails(
@@ -315,7 +315,7 @@ public class FeedbackController {
     @PutMapping("/{feedbackId}")
     public ResponseEntity<FeedbackProfile>
     updateFeedback(
-            @PathVariable String feedbackId,
+            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId,
             @RequestParam @Positive Long passengerId,
             @Valid @RequestBody UpdateFeedbackPayload request
     ) {
@@ -344,7 +344,7 @@ public class FeedbackController {
     @PatchMapping("/{feedbackId}/moderate")
     public ResponseEntity<FeedbackProfile>
     moderateFeedback(
-            @PathVariable String feedbackId,
+            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId,
             @Valid @RequestBody ModerateFeedbackPayload request
     ) {
         return ResponseEntity.ok(
@@ -366,7 +366,7 @@ public class FeedbackController {
     @PatchMapping("/{feedbackId}/respond")
     public ResponseEntity<FeedbackProfile>
     respondToFeedback(
-            @PathVariable String feedbackId,
+            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId,
             @Valid @RequestBody AdminResponsePayload request
     ) {
         return ResponseEntity.ok(
