@@ -50,7 +50,8 @@ export default function ApiAdminEntity({ entity }) {
   const overlaps = trip => {
     if (trip.id === editing?.id || ['CANCELLED','COMPLETED'].includes(String(trip.status || '').toUpperCase())) return false
     const start = Date.parse(values.departureTime), end = Date.parse(values.arrivalTime)
-    if (!Number.isFinite(start) || !Number.isFinite(end)) return ['IN_PROGRESS'].includes(String(trip.status || '').toUpperCase())
+    // Without a complete schedule, availability cannot be determined from trip overlap.
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return false
     return Date.parse(trip.departureTime) < end && Date.parse(trip.arrivalTime) > start
   }
   const resourceAvailable = (item, key) => {
