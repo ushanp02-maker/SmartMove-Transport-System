@@ -14,15 +14,33 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.security.SecureRandom;
+import java.util.Base64;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import com.smartmove.backend.repository.UserAccountRepository;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthenticationManager authenticationManager;
+    private final UserAccountRepository accountRepository;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AuthenticationManager authenticationManager,
+                          UserAccountRepository accountRepository) {
         this.authService = authService;
+        this.authenticationManager = authenticationManager;
+        this.accountRepository = accountRepository;
     }
 
     // ==========================================
@@ -55,18 +73,61 @@ public class AuthController {
     // ==========================================
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
-            @Valid @RequestBody LoginRequest request
+    public ResponseEntity<SessionResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest servletRequest
     ) {
         UserAccount account = authService.authenticate(
                 request.usernameOrEmail(),
                 request.password()
         );
 
-        return ResponseEntity.ok(
-                toResponse(account, "Credentials verified")
-        );
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(account.getUsername(), request.password()));
+        HttpSession previous = servletRequest.getSession(false);
+        if (previous != null) previous.invalidate();
+        HttpSession session = servletRequest.getSession(true);
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        String csrfToken = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        session.setAttribute("SMARTMOVE_CSRF", csrfToken);
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
+        return ResponseEntity.ok(toSessionResponse(account, csrfToken));
     }
+
+    @GetMapping("/session")
+    public ResponseEntity<SessionResponse> session(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (session == null || authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired");
+        }
+        UserAccount account = accountRepository.findByUsernameIgnoreCase(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account not found"));
+        if (!"ACTIVE".equalsIgnoreCase(account.getAccountStatus())) {
+            session.invalidate();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account disabled");
+        }
+        return ResponseEntity.ok(toSessionResponse(account, (String) session.getAttribute("SMARTMOVE_CSRF")));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) session.invalidate();
+        SecurityContextHolder.clearContext();
+        return ResponseEntity.noContent().build();
+    }
+
+    private SessionResponse toSessionResponse(UserAccount account, String csrfToken) {
+        return new SessionResponse(toResponse(account, "Authenticated"), csrfToken);
+    }
+
+    public record SessionResponse(AuthResponse account, String csrfToken) {}
 
     // ==========================================
     // API INFORMATION
@@ -84,7 +145,7 @@ public class AuthController {
                         "SUPER_ADMIN"
                 },
                 "loginStatus",
-                "Credential verification only; session authentication pending"
+                "Server-side session authentication enabled"
         ));
     }
 

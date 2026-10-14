@@ -83,17 +83,8 @@ public class TripStatusService {
             );
         }
 
-        LocalDateTime now = LocalDateTime.now();
-
-        // Prevent starting a trip excessively early.
-        if (now.isBefore(
-                trip.getDepartureTime().minusMinutes(30)
-        )) {
-            throw conflict(
-                    "Trip cannot be started more than "
-                            + "30 minutes before scheduled departure"
-            );
-        }
+        // Drivers may start assigned scheduled trips ahead of departure
+        // to support coursework demonstrations and end-to-end testing.
 
         trip.setStatus(IN_PROGRESS);
 

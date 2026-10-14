@@ -2,6 +2,7 @@
 package com.smartmove.backend.controller;
 
 import com.smartmove.backend.service.FeedbackService;
+import com.smartmove.backend.service.CurrentUserService;
 import com.smartmove.backend.service.FeedbackService.FeedbackProfile;
 import com.smartmove.backend.service.FeedbackService.PublicFeedback;
 import com.smartmove.backend.service.FeedbackService.CreateFeedbackRequest;
@@ -17,7 +18,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.data.domain.Page;
@@ -40,11 +40,14 @@ import java.util.Map;
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
+    private final CurrentUserService currentUserService;
 
     public FeedbackController(
-            FeedbackService feedbackService
+            FeedbackService feedbackService,
+            CurrentUserService currentUserService
     ) {
         this.feedbackService = feedbackService;
+        this.currentUserService = currentUserService;
     }
 
     // ==========================================
@@ -270,7 +273,7 @@ public class FeedbackController {
     @GetMapping("/{feedbackId}")
     public ResponseEntity<FeedbackProfile>
     getFeedbackDetails(
-            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId
+            @PathVariable String feedbackId
     ) {
         return ResponseEntity.ok(
                 feedbackService.getFeedbackDetails(
@@ -316,7 +319,7 @@ public class FeedbackController {
     @PutMapping("/{feedbackId}")
     public ResponseEntity<FeedbackProfile>
     updateFeedback(
-            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId,
+            @PathVariable String feedbackId,
             @RequestParam @Positive Long passengerId,
             @Valid @RequestBody UpdateFeedbackPayload request
     ) {
@@ -345,15 +348,16 @@ public class FeedbackController {
     @PatchMapping("/{feedbackId}/moderate")
     public ResponseEntity<FeedbackProfile>
     moderateFeedback(
-            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId,
+            @PathVariable String feedbackId,
             @Valid @RequestBody ModerateFeedbackPayload request
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 feedbackService.moderateFeedback(
                         feedbackId,
                         new ModerateFeedbackRequest(
                                 request.status(),
-                                request.moderatorUserId(),
+                                currentUserService.getCurrentAccountId(),
                                 request.moderationNotes()
                         )
                 )
@@ -367,14 +371,15 @@ public class FeedbackController {
     @PatchMapping("/{feedbackId}/respond")
     public ResponseEntity<FeedbackProfile>
     respondToFeedback(
-            @PathVariable @NotBlank(message = "Feedback ID is required") String feedbackId,
+            @PathVariable String feedbackId,
             @Valid @RequestBody AdminResponsePayload request
     ) {
+        currentUserService.requireAdmin();
         return ResponseEntity.ok(
                 feedbackService.respondToFeedback(
                         feedbackId,
                         new AdminResponseRequest(
-                                request.adminUserId(),
+                                currentUserService.getCurrentAccountId(),
                                 request.response()
                         )
                 )
@@ -451,12 +456,10 @@ public class FeedbackController {
             @Max(5)
             Integer comfortRating,
 
-            @Size(min = 3, max = 150)
-            @Pattern(regexp = ".*\\S.*", message = "Title cannot be blank")
+            @Size(max = 150)
             String title,
 
-            @Size(min = 10, max = 3000)
-            @Pattern(regexp = ".*\\S.*", message = "Comment cannot be blank")
+            @Size(max = 3000)
             String comment,
 
             String category
@@ -469,10 +472,6 @@ public class FeedbackController {
             @NotBlank(message = "Moderation status is required")
             String status,
 
-            @NotNull(message = "Moderator user ID is required")
-            @Positive
-            Long moderatorUserId,
-
             @Size(max = 1000)
             String moderationNotes
 
@@ -480,10 +479,6 @@ public class FeedbackController {
     }
 
     public record AdminResponsePayload(
-
-            @NotNull(message = "Admin user ID is required")
-            @Positive
-            Long adminUserId,
 
             @NotBlank(message = "Response is required")
             @Size(max = 2000)
@@ -497,10 +492,9 @@ public class FeedbackController {
     // ==========================================
 
     private Pageable createPageable(int page, int size) {
-        if (page < 0) { throw badRequest("Page number cannot be negative"); }
-        if (size < 1 || size > 100) {
+        if (page < 0 || size < 1 || size > 100) {
             throw badRequest(
-                    "Page size must be between 1 and 100"
+                    "Page must be nonnegative and size must be between 1 and 100"
             );
         }
 

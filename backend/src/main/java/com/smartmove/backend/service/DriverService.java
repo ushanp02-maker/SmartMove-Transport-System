@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 
@@ -47,7 +48,8 @@ public class DriverService {
             LocalDate joinedDate,
             boolean licenseExpired,
             boolean licenseExpiringSoon
-    ) {}
+    ) {
+    }
 
     public record CreateDriverRequest(
             String name,
@@ -56,7 +58,8 @@ public class DriverService {
             String licenseNumber,
             LocalDate licenseExpiry,
             Integer experienceYears
-    ) {}
+    ) {
+    }
 
     public record UpdateDriverRequest(
             String name,
@@ -64,7 +67,8 @@ public class DriverService {
             String licenseNumber,
             LocalDate licenseExpiry,
             Integer experienceYears
-    ) {}
+    ) {
+    }
 
     public record DriverStatistics(
             long totalDrivers,
@@ -73,7 +77,8 @@ public class DriverService {
             long suspendedDrivers,
             long expiredLicenses,
             long expiringLicenses
-    ) {}
+    ) {
+    }
 
     // ==========================================
     // DRIVER LOOKUP
@@ -81,9 +86,11 @@ public class DriverService {
 
     @Transactional(readOnly = true)
     public Driver getDriverById(Long driverId) {
-
         if (driverId == null) {
-            throw badRequest("Driver ID is required");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Driver ID is required"
+            );
         }
 
         return driverRepository.findById(driverId)
@@ -101,8 +108,9 @@ public class DriverService {
     }
 
     @Transactional(readOnly = true)
-    public DriverProfile getProfileByAccountId(Long accountId) {
-
+    public DriverProfile getProfileByAccountId(
+            Long accountId
+    ) {
         UserAccount account = getAccount(accountId);
 
         if (account.getDriverId() == null) {
@@ -120,18 +128,21 @@ public class DriverService {
     // ==========================================
 
     @Transactional
-    public DriverProfile createDriver(CreateDriverRequest request) {
-
+    public DriverProfile createDriver(
+            CreateDriverRequest request
+    ) {
         if (request == null) {
             throw badRequest("Driver details are required");
         }
 
-        String name = validateDriverName(request.name());
+        String name = requireText(
+                request.name(), "Driver name"
+        );
 
         String email = normalizeEmail(request.email());
 
-        String licenseNumber = validateLicenseNumber(
-                request.licenseNumber()
+        String licenseNumber = requireText(
+                request.licenseNumber(), "License number"
         );
 
         validateLicenseExpiry(request.licenseExpiry());
@@ -157,13 +168,7 @@ public class DriverService {
 
         driver.setName(name);
         driver.setEmail(email);
-
-    String phone = normalizeOptional(request.phone());
-
-        driver.setPhone(
-        phone == null ? null : validatePhoneNumber(phone)
-        );
-
+        driver.setPhone(normalizeOptional(request.phone()));
         driver.setLicenseNumber(licenseNumber);
         driver.setLicenseExpiry(request.licenseExpiry());
         driver.setExperienceYears(request.experienceYears());
@@ -182,7 +187,6 @@ public class DriverService {
             Long driverId,
             UpdateDriverRequest request
     ) {
-
         if (request == null) {
             throw badRequest("Update details are required");
         }
@@ -191,29 +195,28 @@ public class DriverService {
 
         if (request.name() != null) {
             driver.setName(
-                    validateDriverName(request.name())
+                    requireText(request.name(), "Driver name")
             );
         }
 
-      if (request.phone() != null) {
-    String phone = normalizeOptional(request.phone());
-
-    driver.setPhone(
-            phone == null ? null : validatePhoneNumber(phone)
-    );
-}
+        if (request.phone() != null) {
+            driver.setPhone(
+                    normalizeOptional(request.phone())
+            );
+        }
 
         if (request.licenseNumber() != null) {
-
-            String licenseNumber = validateLicenseNumber(
-                    request.licenseNumber()
+            String licenseNumber = requireText(
+                    request.licenseNumber(),
+                    "License number"
             );
 
             if (!licenseNumber.equalsIgnoreCase(
                     driver.getLicenseNumber()
-            ) && driverRepository.existsByLicenseNumberIgnoreCase(
-                    licenseNumber
-            )) {
+            ) && driverRepository
+                    .existsByLicenseNumberIgnoreCase(
+                            licenseNumber
+                    )) {
                 throw new ResponseStatusException(
                         HttpStatus.CONFLICT,
                         "License number already exists"
@@ -247,7 +250,6 @@ public class DriverService {
             Long driverId,
             String newStatus
     ) {
-
         Driver driver = getDriverById(driverId);
 
         String status = requireText(
@@ -265,6 +267,10 @@ public class DriverService {
             throw badRequest("Invalid driver status");
         }
 
+        // Suspended drivers cannot change their own
+        // status through an ordinary availability flow.
+        // The controller must additionally enforce
+        // administrator authorization.
         if ("SUSPENDED".equalsIgnoreCase(
                 driver.getStatus()
         ) && !"SUSPENDED".equals(status)) {
@@ -274,14 +280,10 @@ public class DriverService {
             );
         }
 
-        // ==========================================
-        // IMPROVEMENT 10: EXPIRED LICENSE STATUS VALIDATION
-        // ==========================================
-
-        if (("AVAILABLE".equals(status) || "ON_TRIP".equals(status))
+        if ("AVAILABLE".equals(status)
                 && isLicenseExpired(driver)) {
             throw badRequest(
-                    "Driver cannot be AVAILABLE or ON_TRIP with an expired license"
+                    "Driver cannot be available with an expired license"
             );
         }
 
@@ -303,7 +305,9 @@ public class DriverService {
     }
 
     @Transactional(readOnly = true)
-    public Page<DriverProfile> getDrivers(Pageable pageable) {
+    public Page<DriverProfile> getDrivers(
+            Pageable pageable
+    ) {
         return driverRepository.findAll(pageable)
                 .map(this::toProfile);
     }
@@ -315,7 +319,8 @@ public class DriverService {
                 .filter(driver ->
                         "AVAILABLE".equalsIgnoreCase(
                                 driver.getStatus()
-                        ) && !isLicenseExpired(driver)
+                        )
+                                && !isLicenseExpired(driver)
                 )
                 .map(this::toProfile)
                 .toList();
@@ -326,8 +331,9 @@ public class DriverService {
     // ==========================================
 
     @Transactional(readOnly = true)
-    public List<DriverProfile> searchDrivers(String keyword) {
-
+    public List<DriverProfile> searchDrivers(
+            String keyword
+    ) {
         if (keyword == null || keyword.isBlank()) {
             return getAllDrivers();
         }
@@ -341,13 +347,13 @@ public class DriverService {
                         containsIgnoreCase(
                                 driver.getName(), search
                         )
-                        || containsIgnoreCase(
+                                || containsIgnoreCase(
                                 driver.getEmail(), search
                         )
-                        || containsIgnoreCase(
+                                || containsIgnoreCase(
                                 driver.getPhone(), search
                         )
-                        || containsIgnoreCase(
+                                || containsIgnoreCase(
                                 driver.getLicenseNumber(), search
                         )
                 )
@@ -372,7 +378,6 @@ public class DriverService {
     public List<DriverProfile> getExpiringLicenseDrivers(
             int daysAhead
     ) {
-
         if (daysAhead < 0 || daysAhead > 365) {
             throw badRequest(
                     "Days ahead must be between 0 and 365"
@@ -382,7 +387,9 @@ public class DriverService {
         return driverRepository.findAll()
                 .stream()
                 .filter(driver ->
-                        isLicenseExpiringSoon(driver, daysAhead)
+                        isLicenseExpiringSoon(
+                                driver, daysAhead
+                        )
                 )
                 .map(this::toProfile)
                 .toList();
@@ -394,7 +401,6 @@ public class DriverService {
 
     @Transactional(readOnly = true)
     public DriverStatistics getDriverStatistics() {
-
         List<Driver> drivers = driverRepository.findAll();
 
         long available = drivers.stream()
@@ -438,7 +444,6 @@ public class DriverService {
     // ==========================================
 
     private UserAccount getAccount(Long accountId) {
-
         if (accountId == null) {
             throw badRequest("Account ID is required");
         }
@@ -478,7 +483,6 @@ public class DriverService {
             Driver driver,
             int daysAhead
     ) {
-
         LocalDate expiry = driver.getLicenseExpiry();
 
         if (expiry == null) {
@@ -489,90 +493,25 @@ public class DriverService {
 
         return !expiry.isBefore(today)
                 && !expiry.isAfter(
-                        today.plusDays(daysAhead)
-                );
+                today.plusDays(daysAhead)
+        );
     }
 
-    // ==========================================
-    // IMPROVEMENT 6: LICENSE EXPIRY VALIDATION
-    // ==========================================
-
     private void validateLicenseExpiry(LocalDate expiry) {
-
         if (expiry == null) {
             throw badRequest("License expiry date is required");
         }
-
-        if (expiry.isBefore(LocalDate.now())) {
-            throw badRequest("Driver license has already expired");
-        }
     }
 
-    // ==========================================
-    // IMPROVEMENT 7: DRIVER EXPERIENCE VALIDATION
-    // ==========================================
-
     private void validateExperience(Integer years) {
-
-        if (years == null) {
-            throw badRequest("Driver experience years are required");
-        }
-
-        if (years < 0 || years > 80) {
+        if (years != null && (years < 0 || years > 80)) {
             throw badRequest(
                     "Experience years must be between 0 and 80"
             );
         }
     }
 
-    // ==========================================
-    // IMPROVEMENT 8: DRIVER NAME LENGTH VALIDATION
-    // ==========================================
-
-    private String validateDriverName(String name) {
-
-        String value = requireText(name, "Driver name");
-
-        if (value.length() < 2 || value.length() > 100) {
-            throw badRequest(
-                    "Driver name must contain between 2 and 100 characters"
-            );
-        }
-
-        return value;
-    }
-
-    // ==========================================
-    // IMPROVEMENT 9: DRIVER LICENSE NUMBER LENGTH VALIDATION
-    // ==========================================
-
-    private String validateLicenseNumber(String licenseNumber) {
-
-        String value = requireText(
-                licenseNumber, "License number"
-        );
-
-        if (value.length() < 5 || value.length() > 20) {
-            throw badRequest(
-                    "License number must contain between 5 and 20 characters"
-            );
-        }
-
-        if (!value.matches("^[A-Za-z0-9-]+$")) {
-            throw badRequest(
-                    "Invalid license number. Only letters, numbers and hyphens are allowed"
-            );
-        }
-
-        return value;
-    }
-
-    // ==========================================
-    // EMAIL VALIDATION
-    // ==========================================
-
     private String normalizeEmail(String email) {
-
         String value = requireText(
                 email, "Email"
         ).toLowerCase(Locale.ROOT);
@@ -586,15 +525,10 @@ public class DriverService {
         return value;
     }
 
-    // ==========================================
-    // TEXT VALIDATION
-    // ==========================================
-
     private String requireText(
             String value,
             String field
     ) {
-
         if (value == null || value.isBlank()) {
             throw badRequest(field + " is required");
         }
@@ -610,29 +544,6 @@ public class DriverService {
         return value.trim();
     }
 
-    // ==========================================
-    // PHONE NUMBER VALIDATION
-    // ==========================================
-
-    private String validatePhoneNumber(String phone) {
-
-        String value = requireText(
-                phone, "Phone number"
-        );
-
-        if (!value.matches("^(?:0[0-9]{9}|\\+94[0-9]{9})$")) {
-            throw badRequest(
-                    "Invalid phone number. Use 0XXXXXXXXX or +94XXXXXXXXX"
-            );
-        }
-
-        return value;
-    }
-
-    // ==========================================
-    // SEARCH HELPER
-    // ==========================================
-
     private boolean containsIgnoreCase(
             String value,
             String keyword
@@ -642,11 +553,9 @@ public class DriverService {
                 .contains(keyword);
     }
 
-    // ==========================================
-    // ERROR HELPER
-    // ==========================================
-
-    private ResponseStatusException badRequest(String message) {
+    private ResponseStatusException badRequest(
+            String message
+    ) {
         return new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
                 message

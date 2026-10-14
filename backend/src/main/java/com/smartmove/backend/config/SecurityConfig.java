@@ -22,6 +22,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
@@ -211,11 +213,13 @@ public class SecurityConfig {
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
+                                SessionCreationPolicy.IF_REQUIRED
                         )
                 )
 
-                .httpBasic(Customizer.withDefaults())
+                .securityContext(context -> context.securityContextRepository(new HttpSessionSecurityContextRepository()))
+                .addFilterBefore(new SessionCsrfFilter(), UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(basic -> basic.disable())
 
                 .formLogin(form -> form.disable())
 
@@ -301,6 +305,8 @@ public class SecurityConfig {
                         ).hasAnyRole(ADMIN_ROLES)
 
                         // ----------------------------------
+                        .requestMatchers("/api/notifications/**").hasAnyRole(ALL_ROLES)
+
                         // CURRENT USER
                         // ----------------------------------
 
@@ -552,6 +558,20 @@ public class SecurityConfig {
                                 "/api/tracking/**"
                         ).hasAnyRole(ALL_ROLES)
 
+                        // MANUAL TRIP CHECKPOINTS
+                        // ----------------------------------
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/trip-checkpoints/**"
+                        ).hasAnyRole(ALL_ROLES)
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/trip-checkpoints/**"
+                        ).hasAnyRole(STAFF_ROLES)
+
+                        // ----------------------------------
                         // ----------------------------------
                         // TRIP STATUS
                         // ----------------------------------
@@ -723,7 +743,8 @@ public class SecurityConfig {
                         "Content-Type",
                         "Accept",
                         "Origin",
-                        "X-Requested-With"
+                        "X-Requested-With",
+                        "X-CSRF-Token"
                 )
         );
 
@@ -733,7 +754,7 @@ public class SecurityConfig {
                 )
         );
 
-        configuration.setAllowCredentials(false);
+        configuration.setAllowCredentials(true);
 
         configuration.setMaxAge(3600L);
 

@@ -23,12 +23,9 @@ CREATE OR REPLACE PACKAGE BODY sm_reports AS
   FUNCTION occupied_seats(p_trip_id NUMBER, p_board_order NUMBER, p_dest_order NUMBER) RETURN NUMBER IS
     v_count NUMBER;
   BEGIN
-    IF p_trip_id IS NULL
-   OR p_board_order IS NULL
-   OR p_dest_order IS NULL
-   OR p_board_order >= p_dest_order THEN
-  RAISE_APPLICATION_ERROR(-20021,'Invalid trip or stop order');
-END IF;
+    IF p_trip_id IS NULL OR p_board_order >= p_dest_order THEN
+      RAISE_APPLICATION_ERROR(-20021,'Invalid trip or stop order');
+    END IF;
     SELECT NVL(SUM(b.seat_count),0) INTO v_count FROM bookings b
       JOIN route_stops s1 ON s1.id=b.boarding_stop_id
       JOIN route_stops s2 ON s2.id=b.destination_stop_id

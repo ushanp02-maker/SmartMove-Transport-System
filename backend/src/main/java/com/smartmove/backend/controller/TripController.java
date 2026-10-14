@@ -9,7 +9,6 @@ import com.smartmove.backend.service.TripService.TripStatistics;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -295,7 +294,6 @@ public class TripController {
             LocalDateTime arrivalTime,
 
             @DecimalMin("0.00")
-            @Digits(integer = 10, fraction = 2, message = "Fare must have at most 10 integer digits and 2 decimal places")
             BigDecimal fare
 
     ) {
@@ -317,7 +315,6 @@ public class TripController {
             LocalDateTime arrivalTime,
 
             @DecimalMin("0.00")
-            @Digits(integer = 10, fraction = 2, message = "Fare must have at most 10 integer digits and 2 decimal places")
             BigDecimal fare
 
     ) {

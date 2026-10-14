@@ -76,6 +76,24 @@ public class AdminDeletionController {
         delete("VEHICLES", id);
     }
 
+    @DeleteMapping("/trips/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void trip(@PathVariable Long id) {
+        currentUser.requireAdmin();
+        String status = jdbc.query(
+            "SELECT STATUS FROM TRIPS WHERE ID = ?",
+            rs -> rs.next() ? rs.getString(1) : null, id
+        );
+        if (status == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Trip not found");
+        guard(!"SCHEDULED".equalsIgnoreCase(status),
+            "Only scheduled trips can be deleted. Preserve active, completed and cancelled trip history.");
+        guard(count("SELECT COUNT(*) FROM BOOKINGS WHERE TRIP_ID = ?", id) > 0,
+            "Trip has bookings. Preserve the trip and its booking/payment history.");
+        // Other database references are protected by Oracle foreign-key constraints.
+        delete("TRIPS", id);
+    }
+
     @DeleteMapping("/routes/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional

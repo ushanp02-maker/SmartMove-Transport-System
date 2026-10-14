@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react'
+import { Check, X, RefreshCw, Star, MessageSquareText, Clock3, ShieldCheck } from 'lucide-react'
 import { request } from '../services/apiClient'
-const columns = ['id','title','rating','comment','category','status','createdAt']
-export default function ApiFeedbackAdmin() {
-  const [items,setItems] = useState([])
-  const [error,setError] = useState('')
-  const [reload,setReload] = useState(0)
-  const [busy,setBusy] = useState(false)
-  useEffect(() => { let active = true; request('/feedback?page=0&size=100').then(data => {if(active) {setItems(Array.isArray(data) ? data : (data.content || []));setError('')}}).catch(err => {if(active)setError(err.message)});return () => {active=false} },[reload])
-  const moderate = async (item,status) => {
-    const moderatorUserId = window.prompt('Your Oracle admin user ID')
-    if (!moderatorUserId) return
-    if (!Number.isSafeInteger(Number(moderatorUserId)) || Number(moderatorUserId) < 1) return setError('Invalid moderator user ID')
-    const moderationNotes = window.prompt('Moderation notes (optional)', '')
-    if (moderationNotes === null) return
-    setBusy(true);setError('')
-    try { await request(`/feedback/${encodeURIComponent(item.id)}/moderate`,{method:'PATCH',body:JSON.stringify({status,moderatorUserId:Number(moderatorUserId),moderationNotes})});setReload(n=>n+1) } catch(err){setError(err.message)} finally{setBusy(false)}
-  }
-  return <section className="portal-panel"><div className="portal-panel-head"><div><h1>Reviews and moderation</h1><p>Reviews loaded from the MongoDB-backed feedback API.</p></div><button className="button button-outline" onClick={() => setReload(n=>n+1)}>Refresh</button></div>{error && <p className="auth-error" role="alert">{error}</p>}<div style={{overflowX:'auto'}}><table className="data-table"><thead><tr>{columns.map(x=><th key={x}>{x}</th>)}<th>Moderate</th></tr></thead><tbody>{items.map(item=><tr key={item.id}>{columns.map(key=><td key={key}>{String(item[key]??'—')}</td>)}<td>{['APPROVED','REJECTED'].map(status=><button key={status} disabled={busy} className="button button-outline" onClick={()=>moderate(item,status)}>{status}</button>)}</td></tr>)}</tbody></table></div>{!items.length&&<p>No reviews found.</p>}</section>
+import './ApiFeedbackAdmin.css'
+
+const formatDate=value=>value?new Date(value).toLocaleString():'—'
+export default function ApiFeedbackAdmin(){
+ const [items,setItems]=useState([]),[error,setError]=useState(''),[reload,setReload]=useState(0),[busy,setBusy]=useState(false),[selected,setSelected]=useState(null),[notes,setNotes]=useState(''),[filter,setFilter]=useState('ALL')
+ useEffect(()=>{let active=true;request('/feedback?page=0&size=100').then(data=>{if(active){setItems(Array.isArray(data)?data:(data.content||[]));setError('')}}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[reload])
+ const moderate=async()=>{if(!selected)return;setBusy(true);setError('');try{await request('/feedback/'+encodeURIComponent(selected.item.id)+'/moderate',{method:'PATCH',body:JSON.stringify({status:selected.status,moderationNotes:notes.trim()||null})});setSelected(null);setNotes('');setReload(n=>n+1)}catch(e){setError(e.message)}finally{setBusy(false)}}
+ const pending=items.filter(x=>x.status==='PENDING').length,approved=items.filter(x=>x.status==='APPROVED').length,rejected=items.filter(x=>x.status==='REJECTED').length
+ const visible=filter==='ALL'?items:items.filter(x=>x.status===filter)
+ return <div className="rf-page"><div className="rf-heading"><div><span className="rf-kicker">CUSTOMER EXPERIENCE</span><h1>Reviews &amp; moderation</h1><p>Review passenger feedback, manage approvals and maintain service quality.</p></div><button className="rf-refresh" onClick={()=>setReload(n=>n+1)}><RefreshCw size={16}/> Refresh</button></div>
+ <div className="rf-stats">{[[items.length,'Total reviews',MessageSquareText],[pending,'Awaiting review',Clock3],[approved,'Approved',ShieldCheck],[rejected,'Rejected',X]].map(([count,label,Icon])=><div className="rf-stat" key={label}><span><Icon size={19}/></span><div><strong>{count}</strong><small>{label}</small></div></div>)}</div>
+ <section className="rf-panel"><div className="rf-panel-head"><div><h2>Passenger feedback</h2><p>Reviews stored in MongoDB</p></div><select aria-label="Filter reviews" value={filter} onChange={e=>setFilter(e.target.value)}>{['ALL','PENDING','APPROVED','REJECTED','HIDDEN'].map(x=><option key={x} value={x}>{x==='ALL'?'All reviews':x[0]+x.slice(1).toLowerCase()}</option>)}</select></div>
+ {error&&<p className="rf-error" role="alert">{error}</p>}<div className="rf-table-wrap"><table className="rf-table"><thead><tr><th>Review</th><th>Rating</th><th>Category</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map(item=><tr key={item.id}><td className="rf-review"><strong>{item.title||'Untitled review'}</strong><p>{item.comment||'No comment provided'}</p></td><td><span className="rf-rating"><Star size={14} fill="currentColor"/> {item.rating}/5</span></td><td>{String(item.category||'GENERAL').replaceAll('_',' ')}</td><td className="rf-date">{formatDate(item.createdAt)}</td><td><span className={'rf-status '+String(item.status||'').toLowerCase()}>{item.status}</span></td><td><div className="rf-row-actions"><button disabled={busy||item.status==='APPROVED'} className="rf-approve" onClick={()=>{setSelected({item,status:'APPROVED'});setNotes('')}}><Check size={14}/> Approve</button><button disabled={busy||item.status==='REJECTED'} className="rf-reject" onClick={()=>{setSelected({item,status:'REJECTED'});setNotes('')}}><X size={14}/> Reject</button></div></td></tr>)}</tbody></table>{!visible.length&&<div className="rf-empty">No reviews match this filter.</div>}</div></section>
+ {selected&&<div className="rf-overlay" onClick={()=>!busy&&setSelected(null)}><section className="rf-dialog" role="dialog" aria-modal="true" aria-label="Confirm review moderation" onClick={e=>e.stopPropagation()}><div className="rf-dialog-icon"><ShieldCheck size={23}/></div><h2>{selected.status==='APPROVED'?'Approve this review?':'Reject this review?'}</h2><p className="rf-dialog-desc">Review: <strong>{selected.item.title}</strong></p><p className="rf-dialog-hint">This action will be recorded under your currently signed-in administrator account.</p><label>Moderation notes <span>(optional)</span><textarea maxLength={1000} rows={3} placeholder="Add a reason or internal note..." value={notes} onChange={e=>setNotes(e.target.value)}/></label>{error&&<p className="rf-error">{error}</p>}<div className="rf-dialog-actions"><button disabled={busy} onClick={()=>setSelected(null)}>Cancel</button><button disabled={busy} className={selected.status==='APPROVED'?'rf-approve':'rf-reject'} onClick={moderate}>{busy?'Saving...':selected.status==='APPROVED'?'Confirm approval':'Confirm rejection'}</button></div></section></div>}</div>
 }

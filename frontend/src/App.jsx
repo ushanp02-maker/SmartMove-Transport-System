@@ -11,6 +11,7 @@ import { useAppData } from './services/useAppData'
 import './App.css'
 import './components/TransportServices.css'
 
+const Notifications = lazy(() => import('./pages/Notifications'))
 const ApiDashboard = lazy(() => import('./pages/ApiDashboard'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Vehicles = lazy(() => import('./pages/Vehicles'))
@@ -32,7 +33,6 @@ const AdminManagement = lazy(() => import('./components/AccountManagement'))
 const ApiAccounts = lazy(() => import('./components/ApiAccounts'))
 const ApiRequestAdmin = lazy(() => import('./components/ApiRequestAdmin'))
 const CustomTripRequestsAdmin = lazy(() => import('./pages/admin/CustomTripRequests'))
-const StaffTransportAdmin = lazy(() => import('./pages/admin/StaffTransport'))
 const LiveFleet = lazy(() => import('./pages/admin/LiveFleet'))
 const ApiSearchTrips = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiSearchTrips})))
 const ApiPassengerTripDetails = lazy(() => import('./pages/portal/ApiPassengerJourneys').then(m => ({default:m.ApiPassengerTripDetails})))
@@ -70,7 +70,6 @@ const ApiDriverIssues = lazy(() => import('./pages/portal/ApiDriverIssues'))
 const DriverIssues = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverIssues })))
 const DriverAnnouncements = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverAnnouncements })))
 const DriverProfile = lazy(() => import('./pages/portal/DriverPortal').then(module => ({ default: module.DriverProfile })))
-const ApiStaffTransport = lazy(() => import('./pages/portal/ApiStaffTransport'))
 const ApiCustomTripRequests = lazy(() => import('./pages/portal/ApiCustomTripRequests'))
 const CustomTripRequests = lazy(() => import('./pages/portal/TransportServices').then(module => ({ default: module.CustomTripRequests })))
 const ApiPassengerTracking = lazy(() => import('./pages/portal/ApiPassengerTracking'))
@@ -120,13 +119,14 @@ function AppRoutes() {
       <Route index element={isApiMode() ? <ApiPassengerDashboard/> : <PassengerDashboard/>}/>
       <Route path="bookings" element={isApiMode() ? <ApiMyBookings/> : <MyBookings/>}/>
       <Route path="custom-trips" element={isApiMode() ? <ApiCustomTripRequests/> : <CustomTripRequests/>}/>
-      <Route path="staff-transport" element={isApiMode() ? <ApiStaffTransport/> : <CustomTripRequests/>}/>
+      <Route path="staff-transport" element={<Navigate to="/passenger/custom-trips" replace/>}/>
       <Route path="tracking" element={isApiMode() ? <ApiPassengerTracking/> : <PassengerTripTracking/>}/>
       <Route path="tracking/:tripId" element={isApiMode() ? <ApiPassengerTracking/> : <PassengerTripTracking/>}/>
       <Route path="tickets" element={isApiMode() ? <ApiMyTickets/> : <MyTickets/>}/>
       <Route path="payments" element={isApiMode() ? <ApiPassengerPayments/> : <PassengerPayments/>}/>
       <Route path="reviews" element={isApiMode() ? <ApiPassengerReviews/> : <PassengerReviews/>}/>
       <Route path="announcements" element={isApiMode() ? <ApiPassengerAnnouncements/> : <PassengerAnnouncements/>}/>
+      <Route path="notifications" element={<Notifications/>}/>
       <Route path="profile" element={isApiMode() ? <ApiPassengerProfile/> : <PassengerProfile/>}/>
     </Route>
     <Route path="/driver" element={<GuardedPortal role="driver"><PortalShell role="driver"/></GuardedPortal>}>
@@ -138,10 +138,11 @@ function AppRoutes() {
       <Route path="trip-status" element={isApiMode() ? <ApiDriverTrips/> : <DriverStatusPage/>}/>
       <Route path="issues" element={isApiMode() ? <ApiDriverIssues/> : <DriverIssues/>}/>
       <Route path="announcements" element={isApiMode() ? <ApiDriverAnnouncements/> : <DriverAnnouncements/>}/>
+      <Route path="notifications" element={<Notifications/>}/>
       <Route path="profile" element={isApiMode() ? <ApiDriverProfile/> : <DriverProfile/>}/>
     </Route>
     <Route path="/admin" element={<GuardedPortal role="admin"><AdminShell/></GuardedPortal>}>
-      <Route index element={isApiMode() ? <ApiDashboard/> : <Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={isApiMode()?<FleetDriverList/>:<Drivers/>}/><Route path="drivers/new" element={isApiMode()?<FleetDriverForm/>:<Drivers/>}/><Route path="drivers/accounts" element={isApiMode()?<FleetDriverAccounts/>:<Drivers/>}/><Route path="drivers/:id/edit" element={isApiMode()?<FleetDriverForm/>:<Drivers/>}/><Route path="drivers/:id" element={isApiMode()?<FleetDriverDetail/>:<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="reports" element={<Reports/>}/><Route path="custom-trip-requests" element={isApiMode() ? <ApiRequestAdmin kind="custom"/> : <CustomTripRequestsAdmin/>}/><Route path="staff-transport" element={isApiMode() ? <ApiRequestAdmin kind="staff"/> : <StaffTransportAdmin/>}/><Route path="live-fleet" element={isApiMode() ? <ApiLiveFleet/> : <LiveFleet/>}/><Route path="admin-management" element={<GuardedPortal role="admin" superAdminOnly>{isApiMode() ? <ApiAccounts kind="ADMIN"/> : <AdminManagement kind="ADMIN"/>}</GuardedPortal>}/>
+      <Route index element={isApiMode() ? <ApiDashboard/> : <Dashboard/>}/><Route path="vehicles" element={<Vehicles/>}/><Route path="drivers" element={isApiMode()?<FleetDriverList/>:<Drivers/>}/><Route path="drivers/new" element={isApiMode()?<FleetDriverForm/>:<Drivers/>}/><Route path="drivers/accounts" element={isApiMode()?<FleetDriverAccounts/>:<Drivers/>}/><Route path="drivers/:id/edit" element={isApiMode()?<FleetDriverForm/>:<Drivers/>}/><Route path="drivers/:id" element={isApiMode()?<FleetDriverDetail/>:<Drivers/>}/><Route path="routes" element={<RoutesPage/>}/><Route path="trips" element={<Trips/>}/><Route path="passengers" element={<Passengers/>}/><Route path="bookings" element={<Bookings/>}/><Route path="payments" element={<Payments/>}/><Route path="maintenance" element={<Maintenance/>}/><Route path="reviews" element={<Reviews/>}/><Route path="announcements" element={<Announcements/>}/><Route path="notifications" element={<Notifications/>}/><Route path="reports" element={<Reports/>}/><Route path="custom-trip-requests" element={isApiMode() ? <ApiRequestAdmin kind="custom"/> : <CustomTripRequestsAdmin/>}/><Route path="staff-transport" element={<Navigate to="/admin/custom-trip-requests" replace/>}/><Route path="live-fleet" element={isApiMode() ? <ApiLiveFleet/> : <LiveFleet/>}/><Route path="admin-management" element={<GuardedPortal role="admin" superAdminOnly>{isApiMode() ? <ApiAccounts kind="ADMIN"/> : <AdminManagement kind="ADMIN"/>}</GuardedPortal>}/>
     </Route>
     {['vehicles','drivers','routes','trips','passengers','bookings','payments','maintenance','reviews','announcements','reports'].map(path=><Route key={path} path={`/${path}`} element={<Navigate to={`/admin/${path}`} replace/>}/>)}
     <Route path="*" element={<Navigate to="/" replace/>}/>

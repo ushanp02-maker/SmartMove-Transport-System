@@ -7,10 +7,13 @@ import {
   isApiMode,
   setApiCredentials as setHttpCredentials,
   clearApiCredentials,
+  setCsrfToken,
 } from './apiClient'
 import {
   login as apiLogin,
   registerPassenger as apiRegisterPassenger,
+  restoreSession,
+  logout as apiLogout,
 } from './authService'
 
 const STORAGE_KEY = 'smartmove-admin-demo-v1'
@@ -382,6 +385,25 @@ export function DataProvider({ children }) {
   )
 
   const [apiAccount, setApiAccount] = useState(null)
+  const [authLoading, setAuthLoading] = useState(isApiMode())
+
+  useEffect(() => {
+    if (!isApiMode()) return
+    let active = true
+    restoreSession().then(result => {
+      if (!active) return
+      setCsrfToken(result.csrfToken)
+      const account = accountFromBackend(result.account)
+      setApiAccount(account)
+      setSession({ accountId: account.userId, userId: account.linkedProfileId })
+    }).catch(() => {
+      if (!active) return
+      clearApiCredentials()
+      setApiAccount(null)
+      setSession(null)
+    }).finally(() => { if (active) setAuthLoading(false) })
+    return () => { active = false }
+  }, [])
 
   // Kept in memory only, never localStorage.
   const [apiCredentials, setApiCredentials] =
@@ -444,7 +466,8 @@ export function DataProvider({ children }) {
         password,
       })
 
-      const account = accountFromBackend(response)
+      const account = accountFromBackend(response.account)
+      setCsrfToken(response.csrfToken)
 
       if (account.accountStatus !== 'ACTIVE') {
         return {
@@ -454,7 +477,7 @@ export function DataProvider({ children }) {
 
       // Shared authentication for ALL backend services.
       // Spring Security HTTP Basic uses username.
-      setHttpCredentials(account.username, password)
+      // Browser cookie authenticates future requests; password is not retained.
 
       setApiAccount(account)
 
@@ -522,6 +545,7 @@ export function DataProvider({ children }) {
 
     session,
     currentUser,
+    authLoading,
     apiCredentials: isApiMode() ? null : apiCredentials,
 
     authenticate,
@@ -576,6 +600,7 @@ export function DataProvider({ children }) {
     },
 
     signOut: () => {
+      if (isApiMode()) apiLogout().catch(() => {})
       // Clears credentials used by all backend services.
       clearApiCredentials()
 
@@ -935,6 +960,7 @@ export function DataProvider({ children }) {
     data,
     session,
     currentUser,
+    authLoading,
     apiCredentials,
   ])
 

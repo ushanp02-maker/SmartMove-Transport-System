@@ -329,6 +329,16 @@ public class PaymentController {
     }
 
     // ==========================================
+    // ADMIN: DELETE PENDING/FAILED ATTEMPT ONLY
+    // ==========================================
+
+    @DeleteMapping("/{paymentId}")
+    public ResponseEntity<Void> deletePayment(@PathVariable @Positive Long paymentId) {
+        paymentService.deleteUnsuccessfulPayment(paymentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ==========================================
     // REQUEST DTOs
     // ==========================================
 

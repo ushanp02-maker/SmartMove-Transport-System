@@ -34,6 +34,8 @@ public class BookingService {
     private static final Set<String> OCCUPYING_STATUSES =
             Set.of("PENDING", "CONFIRMED");
 
+    private final BookingPaymentPlsqlGateway plsql;
+    private final PortalNotificationService notifications;
     private final BookingRepository bookingRepository;
     private final PassengerRepository passengerRepository;
     private final TripRepository tripRepository;
@@ -45,13 +47,17 @@ public class BookingService {
             PassengerRepository passengerRepository,
             TripRepository tripRepository,
             RouteStopRepository stopRepository,
-            PaymentRepository paymentRepository
+            PaymentRepository paymentRepository,
+            BookingPaymentPlsqlGateway plsql,
+            PortalNotificationService notifications
     ) {
         this.bookingRepository = bookingRepository;
         this.passengerRepository = passengerRepository;
         this.tripRepository = tripRepository;
         this.stopRepository = stopRepository;
         this.paymentRepository = paymentRepository;
+        this.plsql = plsql;
+        this.notifications = notifications;
     }
 
     // ==========================================
@@ -176,20 +182,6 @@ public class BookingService {
             Long destinationStopId
     ) {
         Trip trip = findTrip(tripId);
-        // Check whether the trip is open for booking.
-        if (!"SCHEDULED".equalsIgnoreCase(trip.getStatus())) {
-         throw conflict("This trip is not open for booking");
-        }
-
-        if (trip.getDepartureTime() == null
-        || !trip.getDepartureTime().isAfter(LocalDateTime.now())) {
-         throw conflict("Booking is closed for this trip");
-        }
-
-        if (trip.getRoute() == null
-        || !"ACTIVE".equalsIgnoreCase(trip.getRoute().getStatus())) {
-        throw conflict("The route is not currently active");
-        }
 
         RouteStop boarding = findStopOnTrip(
                 trip, boardingStopId
@@ -229,39 +221,7 @@ public class BookingService {
             int boardingOrder,
             int destinationOrder
     ) {
-        List<Booking> activeBookings =
-                bookingRepository.findActiveBookingsForTrip(
-                        tripId,
-                        OCCUPYING_STATUSES
-                );
-
-        int maximum = 0;
-
-        for (int segment = boardingOrder;
-             segment < destinationOrder;
-             segment++) {
-
-            int occupied = 0;
-
-            for (Booking booking : activeBookings) {
-                int bookingStart = booking
-                        .getBoardingStop()
-                        .getStopOrder();
-
-                int bookingEnd = booking
-                        .getDestinationStop()
-                        .getStopOrder();
-
-                if (bookingStart <= segment
-                        && bookingEnd > segment) {
-                    occupied += booking.getSeatCount();
-                }
-            }
-
-            maximum = Math.max(maximum, occupied);
-        }
-
-        return maximum;
+        return plsql.maximumOccupied(tripId, boardingOrder, destinationOrder);
     }
 
     // ==========================================
@@ -325,129 +285,19 @@ public class BookingService {
     public BookingProfile createBooking(
             CreateBookingRequest request
     ) {
-        if (request == null) {
-            throw badRequest(
-                    "Booking details are required"
-            );
-        }
-
+        if (request == null) throw badRequest("Booking details are required");
         validateSeatCount(request.seatCount());
-
-        if (request.tripId() == null) {
-            throw badRequest("Trip ID is required");
+        if (request.tripId() == null || request.passengerId() == null ||
+            request.boardingStopId() == null || request.destinationStopId() == null) {
+            throw badRequest("Passenger, trip and route stops are required");
         }
-
-        // Serialize competing reservations for the
-        // same trip using an Oracle row lock.
-        Trip trip = tripRepository
-                .findByIdForUpdate(request.tripId())
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Trip not found"
-                        )
-                );
-
-        if (!"SCHEDULED".equalsIgnoreCase(
-                trip.getStatus()
-        )) {
-            throw conflict(
-                    "This trip is not open for booking"
-            );
-        }
-
-        if (!trip.getDepartureTime().isAfter(
-                LocalDateTime.now()
-        )) {
-            throw conflict(
-                    "Booking is closed for this trip"
-            );
-        }
-
-        if (!"ACTIVE".equalsIgnoreCase(
-                trip.getRoute().getStatus()
-        )) {
-            throw conflict(
-                    "The route is not currently active"
-            );
-        }
-
-        Passenger passenger =
-                findPassenger(request.passengerId());
-
-        RouteStop boarding = findStopOnTrip(
-                trip,
-                request.boardingStopId()
-        );
-
-        RouteStop destination = findStopOnTrip(
-                trip,
-                request.destinationStopId()
-        );
-
-        validateStopOrder(boarding, destination);
-
-        // Prevent overlapping active bookings for the same passenger.
-        boolean duplicateBooking =
-                bookingRepository.existsOverlappingActiveBooking(
-                        passenger.getId(),
-                        trip.getId(),
-                        boarding.getStopOrder(),
-                        destination.getStopOrder()
-                );
-
-        if (duplicateBooking) {
-            throw conflict(
-                    "Passenger already has an active booking for this journey"
-            );
-        }
-
-        SeatAvailability availability =
-                getSeatAvailability(
-                        trip.getId(),
-                        boarding.getId(),
-                        destination.getId()
-                );
-
-        if (request.seatCount()
-                > availability.availableSeats()) {
-            throw conflict(
-                    "Not enough seats are available"
-            );
-        }
-
-        BigDecimal farePerSeat = calculateSegmentFare(
-                trip,
-                boarding,
-                destination
-        );
-
-        Booking booking = new Booking();
-
-        booking.setPassenger(passenger);
-        booking.setTrip(trip);
-        booking.setBoardingStop(boarding);
-        booking.setDestinationStop(destination);
-        booking.setSeatCount(request.seatCount());
-        booking.setTotalFare(
-                farePerSeat.multiply(
-                        BigDecimal.valueOf(
-                                request.seatCount()
-                        )
-                )
-        );
-
-        // Payment is not automatically completed.
-        // Seats are temporarily reserved as PENDING.
-        booking.setStatus("PENDING");
-
-        booking.setBookingReference(
-                generateBookingReference()
-        );
-
-        return toProfile(
-                bookingRepository.save(booking)
-        );
+        Long id = plsql.createBooking(request.passengerId(),request.tripId(),
+                request.boardingStopId(),request.destinationStopId(),request.seatCount());
+        var saved = getBookingById(id);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Booking created",
+            "Booking #" + id + " was created. Complete payment to confirm your seat.",
+            "BOOKING", "/passenger/bookings");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -458,50 +308,12 @@ public class BookingService {
     public BookingProfile confirmBooking(
             Long bookingId
     ) {
-        Booking booking = lockBooking(bookingId);
-
-        if ("CONFIRMED".equalsIgnoreCase(
-                booking.getStatus()
-        )) {
-            return toProfile(booking);
-        }
-
-        if (!"PENDING".equalsIgnoreCase(
-                booking.getStatus()
-        )) {
-            throw conflict(
-                    "Only pending bookings can be confirmed"
-            );
-        }
-
-        // Confirmation is restricted to bookings
-        // with an existing completed payment record.
-        boolean paid = paymentRepository
-                .findByBookingIdOrderByCreatedAtDesc(
-                        bookingId
-                )
-                .stream()
-                .anyMatch(payment ->
-                        "COMPLETED".equalsIgnoreCase(
-                                payment.getStatus()
-                        )
-                                && payment.getAmount() != null
-                                && payment.getAmount().compareTo(
-                                booking.getTotalFare()
-                        ) == 0
-                );
-
-        if (!paid) {
-            throw conflict(
-                    "A completed matching payment is required"
-            );
-        }
-
-        booking.setStatus("CONFIRMED");
-
-        return toProfile(
-                bookingRepository.save(booking)
-        );
+        if (bookingId == null) throw badRequest("Booking ID is required");
+        plsql.confirmBooking(bookingId);
+        var saved = getBookingById(bookingId);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Booking confirmed",
+            "Your booking #" + bookingId + " is confirmed.", "BOOKING", "/passenger/bookings");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -512,57 +324,12 @@ public class BookingService {
     public BookingProfile cancelBooking(
             Long bookingId
     ) {
-        Booking booking = lockBooking(bookingId);
-
-        if ("CANCELLED".equalsIgnoreCase(
-                booking.getStatus()
-        )) {
-            return toProfile(booking);
-        }
-
-        if (!"PENDING".equalsIgnoreCase(
-                booking.getStatus()
-        )) {
-            throw conflict(
-                    "Only unpaid pending bookings can be cancelled here"
-            );
-        }
-
-        if (!booking.getTrip()
-                .getDepartureTime()
-                .isAfter(LocalDateTime.now())) {
-            throw conflict(
-                    "Trip departure time has passed"
-            );
-        }
-
-        boolean hasSuccessfulPayment =
-                paymentRepository
-                        .findByBookingIdOrderByCreatedAtDesc(
-                                bookingId
-                        )
-                        .stream()
-                        .anyMatch(payment ->
-                                "COMPLETED".equalsIgnoreCase(
-                                        payment.getStatus()
-                                )
-                                        || "REFUNDED".equalsIgnoreCase(
-                                        payment.getStatus()
-                                )
-                        );
-
-        if (hasSuccessfulPayment) {
-            throw conflict(
-                    "Paid bookings require the refund workflow"
-            );
-        }
-
-        booking.setStatus("CANCELLED");
-        booking.setCancelledAt(LocalDateTime.now());
-
-        return toProfile(
-                bookingRepository.save(booking)
-        );
+        if (bookingId == null) throw badRequest("Booking ID is required");
+        plsql.cancelBooking(bookingId);
+        var saved = getBookingById(bookingId);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Booking cancelled",
+            "Your booking #" + bookingId + " was cancelled.", "BOOKING", "/passenger/bookings");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -690,52 +457,7 @@ public class BookingService {
             RouteStop boarding,
             RouteStop destination
     ) {
-        // Validate the trip fare before calculating the booking amount.
-        BigDecimal tripFare = trip.getFare();
-
-        if (tripFare == null || tripFare.signum() <= 0) {
-            throw badRequest("Trip fare must be greater than zero");
-        }
-
-        BigDecimal routeDistance =
-                trip.getRoute().getDistanceKm();
-
-        BigDecimal boardingDistance =
-                boarding.getDistanceFromStartKm();
-
-        BigDecimal destinationDistance =
-                destination.getDistanceFromStartKm();
-
-        if (routeDistance == null
-                || routeDistance.signum() <= 0
-                || boardingDistance == null
-                || destinationDistance == null) {
-            throw badRequest(
-                    "Route distance information is incomplete"
-            );
-        }
-
-        BigDecimal segmentDistance =
-                destinationDistance.subtract(
-                        boardingDistance
-                );
-
-        if (segmentDistance.signum() <= 0
-                || segmentDistance.compareTo(
-                routeDistance
-        ) > 0) {
-            throw badRequest(
-                    "Invalid route segment distance"
-            );
-        }
-
-        return tripFare
-                .multiply(segmentDistance)
-                .divide(
-                        routeDistance,
-                        2,
-                        RoundingMode.HALF_UP
-                );
+        return plsql.segmentFare(trip.getId(), boarding.getId(), destination.getId());
     }
 
     // ==========================================

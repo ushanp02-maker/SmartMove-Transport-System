@@ -40,25 +40,16 @@ public class Driver {
     public Driver() {
     }
 
-   @PrePersist
-public void onCreate() {
-    if (joinedDate == null) {
-        joinedDate = LocalDate.now();
+    @PrePersist
+    public void onCreate() {
+        if (joinedDate == null) {
+            joinedDate = LocalDate.now();
+        }
+
+        if (status == null) {
+            status = "AVAILABLE";
+        }
     }
-
-    applyDefaultStatus();
-}
-
-@PreUpdate
-public void onUpdate() {
-    applyDefaultStatus();
-}
-
-private void applyDefaultStatus() {
-    if (status == null || status.isBlank()) {
-        status = "AVAILABLE";
-    }
-}
 
     public Long getId() {
         return id;

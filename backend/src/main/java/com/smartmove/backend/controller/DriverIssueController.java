@@ -23,11 +23,13 @@ public class DriverIssueController {
     private final CurrentUserService users;
     private final TripStatusService trips;
     private final DriverIssueRepository issues;
+    private final com.smartmove.backend.service.PortalNotificationService notifications;
 
-    public DriverIssueController(CurrentUserService users, TripStatusService trips, DriverIssueRepository issues) {
+    public DriverIssueController(CurrentUserService users, TripStatusService trips, DriverIssueRepository issues, com.smartmove.backend.service.PortalNotificationService notifications) {
         this.users=users;
         this.trips=trips;
         this.issues=issues;
+        this.notifications=notifications;
     }
 
     public record IssueRequest(@NotNull @Positive Long tripId,
@@ -49,6 +51,8 @@ public class DriverIssueController {
         }
         var created = issues.save(new DriverIssue(users.getCurrentDriverId(), users.getCurrentAccountId(),
                 assigned.tripId(), assigned.vehicleId(), request.description().trim(), priority));
+        notifications.notifyAdmins("Driver reported a vehicle issue",
+            "Trip #" + assigned.tripId() + ": " + request.description().trim(), "DRIVER_ISSUE", "/admin/maintenance");
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -64,6 +68,16 @@ public class DriverIssueController {
         return issues.findAllByOrderByCreatedAtDesc();
     }
 
+    @DeleteMapping("/admin/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        users.requireAdmin();
+        var issue = issues.findById(id).orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found")
+        );
+        issues.delete(issue);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/admin/{id}/status")
     public DriverIssue update(@PathVariable String id, @RequestBody Map<String,String> input) {
         users.requireAdmin();
@@ -73,6 +87,10 @@ public class DriverIssueController {
         }
         var issue=issues.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found"));
         issue.setStatus(status);
-        return issues.save(issue);
+        var updated = issues.save(issue);
+        notifications.notifyDriver(issue.getDriverId(), "Vehicle issue status updated",
+            "Your issue for trip #" + issue.getTripId() + " is now " + status + ".",
+            "DRIVER_ISSUE", "/driver/issues");
+        return updated;
     }
 }

@@ -32,8 +32,46 @@ export default function ApiAdminEntity({ entity }) {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [page, setPage] = useState(1)
   const [options, setOptions] = useState({ routes: [], vehicles: [], drivers: [] })
+  const [maintenanceOptions, setMaintenanceOptions] = useState({ vehicles: [], accounts: [] })
+  const [maintenanceOptionErrors, setMaintenanceOptionErrors] = useState({})
   const [scheduledTrips, setScheduledTrips] = useState([])
-  useEffect(() => { if (entity !== 'trips') return; let alive = true; Promise.allSettled(['/routes','/vehicles','/drivers','/trips'].map(path => request(path))).then(results => { if (alive) setOptions({ routes: results[0].status === 'fulfilled' ? results[0].value : [], vehicles: results[1].status === 'fulfilled' ? results[1].value : [], drivers: results[2].status === 'fulfilled' ? results[2].value : [] }); if (alive && results[3].status === 'fulfilled') setScheduledTrips(Array.isArray(results[3].value) ? results[3].value : results[3].value?.content || []) }); return () => { alive = false } }, [entity])
+  const [optionErrors, setOptionErrors] = useState({})
+  const [optionLoading, setOptionLoading] = useState(false)
+  const loadTripOptions = async () => {
+    if (entity !== 'trips') return
+    setOptionLoading(true)
+    const paths = ['/routes','/vehicles','/drivers','/trips']
+    try {
+      const results = await Promise.allSettled(paths.map(path => request(path)))
+      const list = index => {
+        const result = results[index]
+        if (result.status !== 'fulfilled') return []
+        const value = result.value
+        return Array.isArray(value) ? value : (Array.isArray(value?.content) ? value.content : [])
+      }
+      setOptions({ routes: list(0), vehicles: list(1), drivers: list(2) })
+      if (results[3].status === 'fulfilled') setScheduledTrips(list(3))
+      setOptionErrors(Object.fromEntries(results.flatMap((result,index) =>
+        result.status === 'rejected' ? [[paths[index],errorText(result.reason)]] : [])))
+    } finally {
+      setOptionLoading(false)
+    }
+  }
+  const loadMaintenanceOptions = async () => {
+    if (entity !== 'maintenance') return
+    const paths = ['/vehicles', '/admin/accounts?page=0&size=100']
+    const results = await Promise.allSettled(paths.map(path => request(path)))
+    const records = index => {
+      if (results[index].status !== 'fulfilled') return []
+      const value = results[index].value
+      return Array.isArray(value) ? value : Array.isArray(value?.content) ? value.content : []
+    }
+    setMaintenanceOptions({ vehicles: records(0), accounts: records(1) })
+    setMaintenanceOptionErrors(Object.fromEntries(results.flatMap((result,index) =>
+      result.status === 'rejected' ? [[paths[index], errorText(result.reason)]] : [])))
+  }
+  useEffect(() => { if (entity === 'maintenance') loadMaintenanceOptions() }, [entity])
+  useEffect(() => { if (entity === 'trips') loadTripOptions() }, [entity])
   useEffect(() => {
     let active = true
     request(config.path).then(records => { if (active) { setItems(records); setError('') } })
@@ -43,9 +81,11 @@ export default function ApiAdminEntity({ entity }) {
   }, [config.path, version])
   const showRoute = async record => { setPreviewRoute(record); setPreviewStops([]); try { const data = await request(`/routes/${encodeURIComponent(record.id)}/details`); setPreviewRoute(data.route || record); setPreviewStops(data.stops || []) } catch { /* Fall back to route landmarks. */ } }
   const open = record => {
+    if (entity === 'trips') loadTripOptions()
+    if (entity === 'maintenance') loadMaintenanceOptions()
     setEditing(record || {})
     setActionError('')
-    setValues(Object.fromEntries(config.fields.map(([key,,type]) => [key, formatInitial(record?.[key], type)])))
+    setValues(Object.fromEntries(config.fields.map(([key,,type]) => [key, key === 'serviceType' && entity === 'routes' ? (record?.[key] === 'STAFF' ? 'STAFF' : 'STANDARD') : formatInitial(record?.[key], type)])))
   }
   const overlaps = trip => {
     if (trip.id === editing?.id || ['CANCELLED','COMPLETED'].includes(String(trip.status || '').toUpperCase())) return false
@@ -55,7 +95,7 @@ export default function ApiAdminEntity({ entity }) {
     return Date.parse(trip.departureTime) < end && Date.parse(trip.arrivalTime) > start
   }
   const resourceAvailable = (item, key) => {
-    if (key === 'routeId') return String(item.status || '').toUpperCase() === 'ACTIVE' || String(item.id) === String(values[key])
+    if (key === 'routeId') return (['STANDARD','STAFF'].includes(String(item.serviceType || '').toUpperCase()) && String(item.status || '').toUpperCase() === 'ACTIVE') || String(item.id) === String(values[key])
     const status = String(item.status || '').toUpperCase()
     if (status !== 'AVAILABLE' && String(item.id) !== String(values[key])) return false
     return !scheduledTrips.some(trip => String(trip[key]) === String(item.id) && overlaps(trip))
@@ -95,6 +135,21 @@ export default function ApiAdminEntity({ entity }) {
     } catch (err) { setActionError(errorText(err)) }
     finally { setSaving(false) }
   }
+  const deleteTrip = async record => {
+    if (String(record.status || '').toUpperCase() !== 'SCHEDULED') {
+      setActionError('Only scheduled trips without bookings can be deleted. Completed, cancelled and active trips must remain in history.')
+      return
+    }
+    if (!window.confirm(`Permanently delete scheduled trip #${record.id}? Trips with bookings cannot be deleted. This cannot be undone.`)) return
+    setSaving(true); setActionError('')
+    try {
+      await request(`/admin/delete/trips/${encodeURIComponent(record.id)}`, { method: 'DELETE' })
+      setLoading(true)
+      setVersion(n => n + 1)
+      setScheduledTrips(previous => previous.filter(trip => String(trip.id) !== String(record.id)))
+    } catch (err) { setActionError(errorText(err)) }
+    finally { setSaving(false) }
+  }
   const paymentAction = async (record, action) => {
     const id = record.id
     let body
@@ -106,25 +161,35 @@ export default function ApiAdminEntity({ entity }) {
     catch (err) { setActionError(errorText(err)) }
     finally { setSaving(false) }
   }
-  const list = Array.isArray(items) ? items : items?.content || []
+  const deletePayment = async record => {
+    const status = String(record.status || '').toUpperCase()
+    if (!['PENDING', 'FAILED'].includes(status)) return setActionError('Completed and refunded payment records must be retained.')
+    if (!window.confirm(`Permanently delete ${status.toLowerCase()} payment #${record.id}? This cannot be undone.`)) return
+    setSaving(true); setActionError('')
+    try { await request(`/payments/${encodeURIComponent(record.id)}`, { method: 'DELETE' }); setLoading(true); setVersion(n => n + 1) }
+    catch (err) { setActionError(errorText(err)) }
+    finally { setSaving(false) }
+  }
+  const list = (Array.isArray(items) ? items : items?.content || []).filter(item => entity !== 'routes' || String(item.serviceType || '').toUpperCase() !== 'CUSTOM')
   const filtered = list.filter(item => {
     const text = JSON.stringify(item).toLowerCase()
     const status = String(item.status || '').toUpperCase()
     return text.includes(search.toLowerCase()) && (statusFilter === 'ALL' || status === statusFilter)
   })
-  const statuses = [...new Set(list.map(item => String(item.status || '').toUpperCase()).filter(Boolean))]
+  const statuses = entity === 'payments' ? ['PENDING','COMPLETED','FAILED','REFUNDED'] : [...new Set(list.map(item => String(item.status || '').toUpperCase()).filter(Boolean))]
+  const ordered = entity === 'trips' ? [...filtered].sort((a,b) => String(b.departureTime || '').localeCompare(String(a.departureTime || '')) || Number(b.id || 0) - Number(a.id || 0)) : entity === 'payments' ? [...filtered].sort((a,b) => (String(a.status).toUpperCase() === 'PENDING' ? 0 : 1) - (String(b.status).toUpperCase() === 'PENDING' ? 0 : 1) || String(b.createdAt || '').localeCompare(String(a.createdAt || ''))) : filtered
   const pageSize = 7
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const pages = Math.max(1, Math.ceil(ordered.length / pageSize))
   const currentPage = Math.min(page, pages)
-  const shown = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const shown = ordered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   const titles = { routes: 'Routes', trips: 'Trip scheduling', vehicles: 'Vehicles', maintenance: 'Vehicle maintenance', payments: 'Payments' }
   const summary = entity === 'routes' ? [
-    ['Total routes', list.length], ['Commuter routes', list.filter(x => /COMMUTER/i.test(x.serviceType || '')).length], ['Staff routes', list.filter(x => /STAFF/i.test(x.serviceType || '')).length], ['Active routes', list.filter(x => String(x.status || '').toUpperCase() === 'ACTIVE').length]
+    ['Total routes', list.length], ['Standard routes', list.filter(x => /STANDARD|COMMUTER/i.test(x.serviceType || '')).length], ['Staff routes', list.filter(x => /STAFF/i.test(x.serviceType || '')).length], ['Active routes', list.filter(x => String(x.status || '').toUpperCase() === 'ACTIVE').length]
   ] : entity === 'trips' ? [
     ['Total trips', list.length], ['Scheduled', list.filter(x => /SCHEDULED/i.test(x.status || '')).length], ['Ongoing', list.filter(x => /ONGOING|IN_PROGRESS/i.test(x.status || '')).length], ['Completed', list.filter(x => /COMPLETED/i.test(x.status || '')).length]
   ] : entity === 'vehicles' ? [
     ['Total vehicles', list.length], ['Total seats', list.reduce((n,x)=>n+(Number(x.seatingCapacity)||0),0)], ['Available', list.filter(x=>/AVAILABLE/i.test(x.status||'')).length], ['In service', list.filter(x=>/MAINTENANCE|SERVICE/i.test(x.status||'')).length]
-  ] : [['Total records',list.length],['Visible records',filtered.length],['Statuses',statuses.length],['Current page',currentPage]]
+  ] : entity === 'payments' ? [['Total payments',list.length],['Pending',list.filter(x => String(x.status).toUpperCase() === 'PENDING').length],['Completed',list.filter(x => String(x.status).toUpperCase() === 'COMPLETED').length],['Failed / refunded',list.filter(x => ['FAILED','REFUNDED'].includes(String(x.status).toUpperCase())).length]] : [['Total records',list.length],['Visible records',filtered.length],['Statuses',statuses.length],['Current page',currentPage]]
   const displayField = (record, key) => {
     if (entity === 'trips' && ['routeId','vehicleId','driverId'].includes(key)) {
       const collection = key === 'routeId' ? options.routes : key === 'vehicleId' ? options.vehicles : options.drivers
@@ -134,8 +199,29 @@ export default function ApiAdminEntity({ entity }) {
     return pretty(record[key])
   }
   const renderInput = ([key,title,type]) => {
+    if (entity === 'routes' && key === 'serviceType') return <label key={key}>{title}<select required value={values.serviceType || 'STANDARD'} onChange={event => setValues(old => ({ ...old, serviceType: event.target.value }))}><option value="STANDARD">Standard transport</option><option value="STAFF">Staff transport</option></select></label>
+    if (entity === 'maintenance') {
+      const enums = {
+        maintenanceType: [['ROUTINE_SERVICE','Routine service'],['REPAIR','Repair'],['INSPECTION','Inspection'],['TYRE_REPLACEMENT','Tyre replacement'],['EMERGENCY_REPAIR','Emergency repair'],['OTHER','Other']],
+        priority: [['LOW','Low'],['NORMAL','Normal'],['HIGH','High'],['URGENT','Urgent']]
+      }
+      const choices = key === 'vehicleId' ? maintenanceOptions.vehicles : key === 'reportedByUserId' ? maintenanceOptions.accounts : null
+      if (enums[key] || choices) {
+        const errorKey = key === 'vehicleId' ? '/vehicles' : '/admin/accounts?page=0&size=100'
+        return <label key={key}>{key === 'vehicleId' ? 'Vehicle' : key === 'reportedByUserId' ? 'Reported by user' : title}
+          <select required={key === 'vehicleId' || key === 'maintenanceType' || key === 'priority'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}>
+            <option value="">{key === 'reportedByUserId' ? 'No reporter / select user' : 'Select ' + title.toLowerCase()}</option>
+            {enums[key] ? enums[key].map(([value,name]) => <option key={value} value={value}>{name}</option>) :
+              (Array.isArray(choices) ? choices : []).map(item => <option key={item.id} value={item.id}>
+                {key === 'vehicleId' ? (item.registrationNumber || item.name || 'Vehicle') + (item.name ? ' — ' + item.name : '') : (item.username || item.email || 'User') + (item.roleName ? ' (' + item.roleName + ')' : '')} — ID {item.id}
+              </option>)}
+          </select>
+          {choices && maintenanceOptionErrors[errorKey] && <small role="alert">Unable to load options: {maintenanceOptionErrors[errorKey]}</small>}
+        </label>
+      }
+    }
     const choices = entity === 'trips' && (key === 'routeId' ? options.routes : key === 'vehicleId' ? options.vehicles : key === 'driverId' ? options.drivers : null)
-    return <label key={key}>{title}{choices ? <select value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}><option value="">Select {title.toLowerCase()}</option>{(Array.isArray(choices) ? choices : []).filter(item => resourceAvailable(item,key)).map(item => <option key={item.id} value={item.id}>{item.name || item.fullName || item.registrationNumber || item.username || title} — ID {item.id}</option>)}</select> : <input type={type || 'text'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))} step={type === 'number' ? 'any' : undefined} />}</label>
+    return <label key={key}>{title}{choices ? <><select value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}><option value="">Select {title.toLowerCase()}</option>{(Array.isArray(choices) ? choices : []).filter(item => resourceAvailable(item,key)).map(item => <option key={item.id} value={item.id}>{item.name || item.fullName || item.registrationNumber || item.username || title} — ID {item.id}</option>)}</select>{optionErrors[key === 'routeId' ? '/routes' : key === 'vehicleId' ? '/vehicles' : '/drivers'] && <small role="alert">Could not load {title.toLowerCase()}: {optionErrors[key === 'routeId' ? '/routes' : key === 'vehicleId' ? '/vehicles' : '/drivers']}</small>}{!optionLoading && !optionErrors[key === 'routeId' ? '/routes' : key === 'vehicleId' ? '/vehicles' : '/drivers'] && Array.isArray(choices) && choices.length > 0 && !choices.some(item => resourceAvailable(item,key)) && <small>No eligible {title.toLowerCase()} records. Check status and overlapping trips.</small>}</> : <input type={type || 'text'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))} step={type === 'number' ? 'any' : undefined} />}</label>
   }
   if (!config) return <p>Unknown admin module.</p>
   return <section className="sm-admin-page">
@@ -144,7 +230,7 @@ export default function ApiAdminEntity({ entity }) {
     <div className="sm-table-card"><div className="sm-table-toolbar"><div className="sm-search-wrap"><span>⌕</span><input aria-label="Search records" placeholder={'Search '+titles[entity].toLowerCase()+'...'} value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} /></div><div className="sm-toolbar-actions">{statuses.length > 0 && <select aria-label="Filter status" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(1)}}><option value="ALL">All statuses</option>{statuses.map(x=><option key={x} value={x}>{x}</option>)}</select>}<button type="button" className="button button-outline" onClick={()=>{setLoading(true);setVersion(n=>n+1)}}>Refresh</button></div></div>
     {actionError && !editing && <p className="auth-error" role="alert">{actionError}</p>}
     {loading ? <p className="sm-empty">Loading records...</p> : error ? <p className="auth-error" role="alert">{error} <button type="button" onClick={() => {setLoading(true);setVersion(n=>n+1)}}>Retry</button></p> : filtered.length === 0 ? <p className="sm-empty">{list.length ? 'No matching records.' : 'No records in the database yet.'}</p> :
-    <div className="sm-table-scroll"><table className="data-table sm-refined-table"><thead><tr><th>ID</th>{config.fields.slice(0,5).map(([key,title]) => <th key={key}>{title}</th>)}<th>Actions</th></tr></thead><tbody>{shown.map(record => <tr key={record.id}><td>{record.id}</td>{config.fields.slice(0,5).map(([key]) => <td key={key}>{displayField(record,key)}</td>)}<td className="sm-actions">{entity === 'routes' && <button className="button button-outline" type="button" onClick={() => showRoute(record)}>Map</button>}{entity === 'routes' && <button className="button button-outline" type="button" onClick={() => setManagingStops(record)}>Manage stops</button>}{entity === 'routes' && <button className="button button-outline" type="button" disabled={saving} onClick={() => removeRecord(record)}>Delete</button>}{entity === 'routes' && <button className="button button-outline" type="button" disabled={saving} onClick={() => changeRouteStatus(record, String(record.status || '').toUpperCase() === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE')}>{String(record.status || '').toUpperCase() === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>}{entity === 'trips' && <button className="button button-outline" type="button" onClick={() => { const route = (Array.isArray(options.routes) ? options.routes : []).find(x => String(x.id) === String(record.routeId)); if (route) showRoute(route) }}>Map</button>}{!config.createOnly && <button className="button button-outline" type="button" onClick={() => open(record)}>Edit</button>}{entity === 'payments' && ['complete','fail','refund'].map(action => <button key={action} className="button button-outline" type="button" disabled={saving} onClick={() => paymentAction(record, action)}>{action}</button>)}</td></tr>)}</tbody></table></div>}
+    <div className="sm-table-scroll"><table className="data-table sm-refined-table"><thead><tr><th>ID</th>{entity === 'payments' && <><th>Status</th><th>Amount (LKR)</th></>}{config.fields.slice(0,5).map(([key,title]) => <th key={key}>{title}</th>)}<th>Actions</th></tr></thead><tbody>{shown.map(record => <tr key={record.id}><td>{record.id}</td>{entity === 'payments' && <><td><strong>{String(record.status || 'UNKNOWN').toUpperCase()}</strong></td><td>{record.amount == null ? '—' : Number(record.amount).toLocaleString('en-LK',{minimumFractionDigits:2,maximumFractionDigits:2})}</td></>}{config.fields.slice(0,5).map(([key]) => <td key={key}>{displayField(record,key)}</td>)}<td className="sm-actions">{entity === 'routes' && <button className="button button-outline" type="button" onClick={() => showRoute(record)}>Map</button>}{entity === 'routes' && <button className="button button-outline" type="button" onClick={() => setManagingStops(record)}>Manage stops</button>}{entity === 'routes' && <button className="button button-outline" type="button" disabled={saving} onClick={() => removeRecord(record)}>Delete</button>}{entity === 'routes' && <button className="button button-outline" type="button" disabled={saving} onClick={() => changeRouteStatus(record, String(record.status || '').toUpperCase() === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE')}>{String(record.status || '').toUpperCase() === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>}{entity === 'trips' && <button className="button button-outline" type="button" onClick={() => { const route = (Array.isArray(options.routes) ? options.routes : []).find(x => String(x.id) === String(record.routeId)); if (route) showRoute(route) }}>Map</button>}{entity === 'trips' && <button className="button button-outline" type="button" disabled={saving || String(record.status || '').toUpperCase() !== 'SCHEDULED'} title="Only scheduled trips without bookings may be deleted" onClick={() => deleteTrip(record)}>Delete</button>}{!config.createOnly && <button className="button button-outline" type="button" onClick={() => open(record)}>Edit</button>}{entity === 'payments' && <>{(String(record.status).toUpperCase() === 'PENDING' ? ['complete','fail'] : String(record.status).toUpperCase() === 'COMPLETED' ? ['refund'] : []).map(action => <button key={action} className="button button-outline" type="button" disabled={saving} onClick={() => paymentAction(record, action)}>{action}</button>)}{['PENDING','FAILED'].includes(String(record.status).toUpperCase()) && <button className="button button-outline" type="button" disabled={saving} onClick={() => deletePayment(record)}>Delete</button>}</>}</td></tr>)}</tbody></table></div>}
     <div className="sm-table-footer"><span>Showing {filtered.length ? (currentPage-1)*pageSize+1 : 0} to {Math.min(currentPage*pageSize,filtered.length)} of {filtered.length} records</span><div className="sm-pagination"><button type="button" disabled={currentPage===1} onClick={()=>setPage(n=>Math.max(1,n-1))}>‹</button><span>{currentPage} / {pages}</span><button type="button" disabled={currentPage===pages} onClick={()=>setPage(n=>Math.min(pages,n+1))}>›</button></div></div></div>
     {managingStops && <RouteStopsManager route={managingStops} onClose={() => setManagingStops(null)} />}
     {previewRoute && <div className="modal-backdrop"><section className="record-modal sm-refined-modal" role="dialog" aria-modal="true" aria-label="Route map preview"><div className="modal-heading"><h2>Route map</h2><button type="button" className="button button-outline" onClick={()=>setPreviewRoute(null)}>Close</button></div><RouteMapPreview route={previewRoute} stops={previewStops}/></section></div>}

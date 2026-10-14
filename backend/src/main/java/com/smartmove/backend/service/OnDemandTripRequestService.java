@@ -59,6 +59,7 @@ public class OnDemandTripRequestService {
     private final CurrentUserService currentUserService;
     private final RouteRepository routeRepository;
     private final TripService tripService;
+    private final PortalNotificationService notifications;
 
     public OnDemandTripRequestService(
             OnDemandTripRequestRepository requestRepository,
@@ -69,7 +70,8 @@ public class OnDemandTripRequestService {
             BookingRepository bookingRepository,
             CurrentUserService currentUserService,
             RouteRepository routeRepository,
-            TripService tripService
+            TripService tripService,
+            PortalNotificationService notifications
     ) {
         this.requestRepository = requestRepository;
         this.passengerRepository = passengerRepository;
@@ -80,6 +82,7 @@ public class OnDemandTripRequestService {
         this.currentUserService = currentUserService;
         this.routeRepository = routeRepository;
         this.tripService = tripService;
+        this.notifications = notifications;
     }
 
     // ==========================================
@@ -234,7 +237,9 @@ public class OnDemandTripRequestService {
         entity.setStatus(PENDING);
         entity.setCurrency("LKR");
 
-        return toProfile(requestRepository.save(entity));
+        var saved = requestRepository.save(entity);
+        notifications.notifyAdmins("New custom trip request", "A passenger submitted custom trip request #" + saved.getId() + ".", "CUSTOM_TRIP", "/admin/custom-trip-requests");
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -435,7 +440,11 @@ public class OnDemandTripRequestService {
             entity.setApprovedFare(review.approvedFare());
         }
 
-        return toProfile(requestRepository.save(entity));
+        var saved = requestRepository.save(entity);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Custom trip approved",
+            "Your custom trip request #" + saved.getId() + " is approved.", "CUSTOM_TRIP", "/passenger/custom-trips");
+        
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -465,7 +474,11 @@ public class OnDemandTripRequestService {
         entity.setReviewedAt(LocalDateTime.now());
         entity.setReviewNotes(clean(review.reviewNotes()));
 
-        return toProfile(requestRepository.save(entity));
+        var saved = requestRepository.save(entity);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Custom trip rejected",
+            "Your custom trip request #" + saved.getId() + " is rejected.", "CUSTOM_TRIP", "/passenger/custom-trips");
+        
+        return toProfile(saved);
     }
 
     // ==========================================
@@ -500,14 +513,6 @@ public class OnDemandTripRequestService {
                 .orElseThrow(() ->
                         notFound("Trip not found")
                 );
-
-                // IMPROVEMENT 11: PREVENT SUSPENDED DRIVER ASSIGNMENT
-                if (trip.getDriver() == null
-                || "SUSPENDED".equalsIgnoreCase(trip.getDriver().getStatus())) {
-                throw conflict(
-                        "Suspended or missing driver cannot be assigned to a trip"
-                           );
-}
 
         if (!"SCHEDULED".equals(
                 normalize(trip.getStatus())
@@ -590,7 +595,13 @@ public class OnDemandTripRequestService {
         entity.setAssignedAt(LocalDateTime.now());
         entity.setStatus(ASSIGNED);
 
-        return toProfile(requestRepository.save(entity));
+        var saved = requestRepository.save(entity);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Custom trip assigned",
+            "Your custom trip request #" + saved.getId() + " is assigned.", "CUSTOM_TRIP", "/passenger/custom-trips");
+        if (saved.getAssignedTrip() != null && saved.getAssignedTrip().getDriver() != null)
+            notifications.notifyDriver(saved.getAssignedTrip().getDriver().getId(), "Custom trip assigned",
+                "You have been assigned trip #" + saved.getAssignedTrip().getId() + ".", "TRIP_ASSIGNMENT", "/driver/trips");
+        return toProfile(saved);
     }
 
     // Create a dedicated CUSTOM route and trip from the passenger's map points.
@@ -638,7 +649,13 @@ public class OnDemandTripRequestService {
         entity.setAssignedTrip(trip);
         entity.setAssignedAt(LocalDateTime.now());
         entity.setStatus(ASSIGNED);
-        return toProfile(requestRepository.save(entity));
+        var saved = requestRepository.save(entity);
+        notifications.notifyPassenger(saved.getPassenger().getId(), "Custom trip assigned",
+            "Your custom trip request #" + saved.getId() + " is assigned.", "CUSTOM_TRIP", "/passenger/custom-trips");
+        if (saved.getAssignedTrip() != null && saved.getAssignedTrip().getDriver() != null)
+            notifications.notifyDriver(saved.getAssignedTrip().getDriver().getId(), "Custom trip assigned",
+                "You have been assigned trip #" + saved.getAssignedTrip().getId() + ".", "TRIP_ASSIGNMENT", "/driver/trips");
+        return toProfile(saved);
     }
 
     // ==========================================

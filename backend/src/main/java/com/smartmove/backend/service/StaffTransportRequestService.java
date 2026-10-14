@@ -405,20 +405,13 @@ public class StaffTransportRequestService {
 
         requireStatus(entity, PENDING);
 
-        if (review != null && review.approvedFare() != null) {
-            BigDecimal fare = review.approvedFare();
-
-            if (fare.compareTo(BigDecimal.ZERO) < 0) {
-                throw badRequest("Approved fare cannot be negative");
-            }
-
-            if (fare.stripTrailingZeros().scale() > 2) {
-                throw badRequest("Approved fare cannot exceed 2 decimal places");
-            }
-
-            if (fare.compareTo(new BigDecimal("9999999999.99")) > 0) {
-                throw badRequest("Approved fare exceeds the maximum allowed amount");
-            }
+        if (review != null
+                && review.approvedFare() != null
+                && review.approvedFare()
+                .compareTo(BigDecimal.ZERO) < 0) {
+            throw badRequest(
+                    "Approved fare cannot be negative"
+            );
         }
 
         UserAccount reviewer = getCurrentReviewer();
@@ -508,14 +501,6 @@ public class StaffTransportRequestService {
                 .orElseThrow(() ->
                         notFound("Trip not found")
                 );
-
-        // IMPROVEMENT 11: PREVENT SUSPENDED DRIVER ASSIGNMENT
-        if (trip.getDriver() == null
-                || "SUSPENDED".equalsIgnoreCase(trip.getDriver().getStatus())) {
-            throw conflict(
-                    "Suspended or missing driver cannot be assigned to a trip"
-            );
-        }
 
         if (!"SCHEDULED".equals(
                 normalize(trip.getStatus())
@@ -926,10 +911,6 @@ public class StaffTransportRequestService {
             throw badRequest(
                     "Pickup time is required"
             );
-        }
-
-        if (requestedDate.isEqual(LocalDate.now()) && pickupTime.isBefore(LocalTime.now())) {
-            throw badRequest("Pickup time cannot be in the past");
         }
 
         if (passengerCount == null
