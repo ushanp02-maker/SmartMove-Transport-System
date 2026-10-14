@@ -32,6 +32,8 @@ export default function ApiAdminEntity({ entity }) {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [page, setPage] = useState(1)
   const [options, setOptions] = useState({ routes: [], vehicles: [], drivers: [] })
+  const [maintenanceOptions, setMaintenanceOptions] = useState({ vehicles: [], accounts: [] })
+  const [maintenanceOptionErrors, setMaintenanceOptionErrors] = useState({})
   const [scheduledTrips, setScheduledTrips] = useState([])
   const [optionErrors, setOptionErrors] = useState({})
   const [optionLoading, setOptionLoading] = useState(false)
@@ -55,6 +57,20 @@ export default function ApiAdminEntity({ entity }) {
       setOptionLoading(false)
     }
   }
+  const loadMaintenanceOptions = async () => {
+    if (entity !== 'maintenance') return
+    const paths = ['/vehicles', '/admin/accounts?page=0&size=100']
+    const results = await Promise.allSettled(paths.map(path => request(path)))
+    const records = index => {
+      if (results[index].status !== 'fulfilled') return []
+      const value = results[index].value
+      return Array.isArray(value) ? value : Array.isArray(value?.content) ? value.content : []
+    }
+    setMaintenanceOptions({ vehicles: records(0), accounts: records(1) })
+    setMaintenanceOptionErrors(Object.fromEntries(results.flatMap((result,index) =>
+      result.status === 'rejected' ? [[paths[index], errorText(result.reason)]] : [])))
+  }
+  useEffect(() => { if (entity === 'maintenance') loadMaintenanceOptions() }, [entity])
   useEffect(() => { if (entity === 'trips') loadTripOptions() }, [entity])
   useEffect(() => {
     let active = true
@@ -66,6 +82,7 @@ export default function ApiAdminEntity({ entity }) {
   const showRoute = async record => { setPreviewRoute(record); setPreviewStops([]); try { const data = await request(`/routes/${encodeURIComponent(record.id)}/details`); setPreviewRoute(data.route || record); setPreviewStops(data.stops || []) } catch { /* Fall back to route landmarks. */ } }
   const open = record => {
     if (entity === 'trips') loadTripOptions()
+    if (entity === 'maintenance') loadMaintenanceOptions()
     setEditing(record || {})
     setActionError('')
     setValues(Object.fromEntries(config.fields.map(([key,,type]) => [key, key === 'serviceType' && entity === 'routes' ? (record?.[key] === 'STAFF' ? 'STAFF' : 'STANDARD') : formatInitial(record?.[key], type)])))
@@ -183,6 +200,26 @@ export default function ApiAdminEntity({ entity }) {
   }
   const renderInput = ([key,title,type]) => {
     if (entity === 'routes' && key === 'serviceType') return <label key={key}>{title}<select required value={values.serviceType || 'STANDARD'} onChange={event => setValues(old => ({ ...old, serviceType: event.target.value }))}><option value="STANDARD">Standard transport</option><option value="STAFF">Staff transport</option></select></label>
+    if (entity === 'maintenance') {
+      const enums = {
+        maintenanceType: [['ROUTINE_SERVICE','Routine service'],['REPAIR','Repair'],['INSPECTION','Inspection'],['TYRE_REPLACEMENT','Tyre replacement'],['EMERGENCY_REPAIR','Emergency repair'],['OTHER','Other']],
+        priority: [['LOW','Low'],['NORMAL','Normal'],['HIGH','High'],['URGENT','Urgent']]
+      }
+      const choices = key === 'vehicleId' ? maintenanceOptions.vehicles : key === 'reportedByUserId' ? maintenanceOptions.accounts : null
+      if (enums[key] || choices) {
+        const errorKey = key === 'vehicleId' ? '/vehicles' : '/admin/accounts?page=0&size=100'
+        return <label key={key}>{key === 'vehicleId' ? 'Vehicle' : key === 'reportedByUserId' ? 'Reported by user' : title}
+          <select required={key === 'vehicleId' || key === 'maintenanceType' || key === 'priority'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}>
+            <option value="">{key === 'reportedByUserId' ? 'No reporter / select user' : 'Select ' + title.toLowerCase()}</option>
+            {enums[key] ? enums[key].map(([value,name]) => <option key={value} value={value}>{name}</option>) :
+              (Array.isArray(choices) ? choices : []).map(item => <option key={item.id} value={item.id}>
+                {key === 'vehicleId' ? (item.registrationNumber || item.name || 'Vehicle') + (item.name ? ' — ' + item.name : '') : (item.username || item.email || 'User') + (item.roleName ? ' (' + item.roleName + ')' : '')} — ID {item.id}
+              </option>)}
+          </select>
+          {choices && maintenanceOptionErrors[errorKey] && <small role="alert">Unable to load options: {maintenanceOptionErrors[errorKey]}</small>}
+        </label>
+      }
+    }
     const choices = entity === 'trips' && (key === 'routeId' ? options.routes : key === 'vehicleId' ? options.vehicles : key === 'driverId' ? options.drivers : null)
     return <label key={key}>{title}{choices ? <><select value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))}><option value="">Select {title.toLowerCase()}</option>{(Array.isArray(choices) ? choices : []).filter(item => resourceAvailable(item,key)).map(item => <option key={item.id} value={item.id}>{item.name || item.fullName || item.registrationNumber || item.username || title} — ID {item.id}</option>)}</select>{optionErrors[key === 'routeId' ? '/routes' : key === 'vehicleId' ? '/vehicles' : '/drivers'] && <small role="alert">Could not load {title.toLowerCase()}: {optionErrors[key === 'routeId' ? '/routes' : key === 'vehicleId' ? '/vehicles' : '/drivers']}</small>}{!optionLoading && !optionErrors[key === 'routeId' ? '/routes' : key === 'vehicleId' ? '/vehicles' : '/drivers'] && Array.isArray(choices) && choices.length > 0 && !choices.some(item => resourceAvailable(item,key)) && <small>No eligible {title.toLowerCase()} records. Check status and overlapping trips.</small>}</> : <input type={type || 'text'} value={values[key] ?? ''} onChange={event => setValues(old => ({ ...old, [key]: event.target.value }))} step={type === 'number' ? 'any' : undefined} />}</label>
   }
