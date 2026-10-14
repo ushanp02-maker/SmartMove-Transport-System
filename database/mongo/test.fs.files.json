@@ -1,0 +1,32 @@
+[{
+  "_id": {
+    "$oid": "6aca9bd4773850172ab70f5f"
+  },
+  "filename": "images (3).jpg",
+  "length": {
+    "$numberLong": "37237"
+  },
+  "chunkSize": 261120,
+  "uploadDate": {
+    "$date": "2026-10-10T20:11:00.710Z"
+  },
+  "metadata": {
+    "_contentType": "image/jpeg"
+  }
+},
+{
+  "_id": {
+    "$oid": "6acb94372b0c443d7c1aa46e"
+  },
+  "filename": "images (3).jpg",
+  "length": {
+    "$numberLong": "37237"
+  },
+  "chunkSize": 261120,
+  "uploadDate": {
+    "$date": "2026-10-11T13:50:47.738Z"
+  },
+  "metadata": {
+    "_contentType": "image/jpeg"
+  }
+}]

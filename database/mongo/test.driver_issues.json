@@ -1,0 +1,48 @@
+[{
+  "_id": {
+    "$oid": "6aca916b3ad2adf9f0266767"
+  },
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "reportedByAccountId": {
+    "$numberLong": "6"
+  },
+  "tripId": {
+    "$numberLong": "1"
+  },
+  "vehicleId": {
+    "$numberLong": "1"
+  },
+  "description": "had a slightly rough time with the tires",
+  "priority": "NORMAL",
+  "status": "RESOLVED",
+  "createdAt": {
+    "$date": "2026-10-10T19:26:34.993Z"
+  },
+  "_class": "com.smartmove.backend.entity.DriverIssue"
+},
+{
+  "_id": {
+    "$oid": "6acb8f2d2b0c443d7c1aa465"
+  },
+  "driverId": {
+    "$numberLong": "1"
+  },
+  "reportedByAccountId": {
+    "$numberLong": "5"
+  },
+  "tripId": {
+    "$numberLong": "24"
+  },
+  "vehicleId": {
+    "$numberLong": "21"
+  },
+  "description": "howmany days is this for",
+  "priority": "HIGH",
+  "status": "OPEN",
+  "createdAt": {
+    "$date": "2026-10-11T13:29:17.233Z"
+  },
+  "_class": "com.smartmove.backend.entity.DriverIssue"
+}]

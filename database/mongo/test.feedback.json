@@ -1,0 +1,66 @@
+[{
+  "_id": {
+    "$oid": "6aca8fac3ad2adf9f0266766"
+  },
+  "passengerId": {
+    "$numberLong": "2"
+  },
+  "tripId": {
+    "$numberLong": "1"
+  },
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "routeId": {
+    "$numberLong": "1"
+  },
+  "bookingId": {
+    "$numberLong": "1"
+  },
+  "rating": 5,
+  "title": "Great",
+  "comment": "Had a wonderful experience",
+  "category": "GENERAL",
+  "status": "PENDING",
+  "edited": false,
+  "createdAt": {
+    "$date": "2026-10-10T19:19:07.989Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-10T19:19:07.989Z"
+  },
+  "_class": "com.smartmove.backend.document.Feedback"
+},
+{
+  "_id": {
+    "$oid": "6acb6b9e9fa14b382c74234f"
+  },
+  "passengerId": {
+    "$numberLong": "2"
+  },
+  "tripId": {
+    "$numberLong": "21"
+  },
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "routeId": {
+    "$numberLong": "1"
+  },
+  "bookingId": {
+    "$numberLong": "21"
+  },
+  "rating": 5,
+  "title": "Great",
+  "comment": "peacefull experience",
+  "category": "GENERAL",
+  "status": "PENDING",
+  "edited": false,
+  "createdAt": {
+    "$date": "2026-10-11T10:57:34.321Z"
+  },
+  "updatedAt": {
+    "$date": "2026-10-11T10:57:34.321Z"
+  },
+  "_class": "com.smartmove.backend.document.Feedback"
+}]

@@ -1,0 +1,100 @@
+[{
+  "_id": {
+    "$oid": "6acb6b0b9fa14b382c74234c"
+  },
+  "tripId": {
+    "$numberLong": "21"
+  },
+  "stopId": {
+    "$numberLong": "1"
+  },
+  "stopOrder": 0,
+  "stopName": "piliyandala",
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "confirmedAt": {
+    "$date": "2026-10-11T10:55:07.842Z"
+  },
+  "_class": "com.smartmove.backend.document.TripCheckpoint"
+},
+{
+  "_id": {
+    "$oid": "6acb6b379fa14b382c74234d"
+  },
+  "tripId": {
+    "$numberLong": "21"
+  },
+  "stopId": {
+    "$numberLong": "21"
+  },
+  "stopOrder": 1,
+  "stopName": "Maharagama",
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "confirmedAt": {
+    "$date": "2026-10-11T10:55:51.047Z"
+  },
+  "_class": "com.smartmove.backend.document.TripCheckpoint"
+},
+{
+  "_id": {
+    "$oid": "6acb6b4d9fa14b382c74234e"
+  },
+  "tripId": {
+    "$numberLong": "21"
+  },
+  "stopId": {
+    "$numberLong": "2"
+  },
+  "stopOrder": 2,
+  "stopName": "nugegoda",
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "confirmedAt": {
+    "$date": "2026-10-11T10:56:13.387Z"
+  },
+  "_class": "com.smartmove.backend.document.TripCheckpoint"
+},
+{
+  "_id": {
+    "$oid": "6acb8b482b0c443d7c1aa463"
+  },
+  "tripId": {
+    "$numberLong": "23"
+  },
+  "stopId": {
+    "$numberLong": "1"
+  },
+  "stopOrder": 0,
+  "stopName": "piliyandala",
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "confirmedAt": {
+    "$date": "2026-10-11T13:12:40.441Z"
+  },
+  "_class": "com.smartmove.backend.document.TripCheckpoint"
+},
+{
+  "_id": {
+    "$oid": "6acb8b4d2b0c443d7c1aa464"
+  },
+  "tripId": {
+    "$numberLong": "23"
+  },
+  "stopId": {
+    "$numberLong": "21"
+  },
+  "stopOrder": 1,
+  "stopName": "Maharagama",
+  "driverId": {
+    "$numberLong": "2"
+  },
+  "confirmedAt": {
+    "$date": "2026-10-11T13:12:45.700Z"
+  },
+  "_class": "com.smartmove.backend.document.TripCheckpoint"
+}]
